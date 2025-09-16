@@ -723,6 +723,29 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
+        .days-off-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .days-off-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .days-off-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        
+        .days-off-checkboxes input[type="checkbox"] {
+            margin: 0 5px 0 0;
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -885,9 +908,20 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
 
             <div class="days-off-section">
                 <h3>🏖️ Days Off</h3>
-                <div class="setting-row">
-                    <label>Days Off Color:</label>
-                    <input type="color" id="offDayColor" value="#f0f0f0">
+                <div class="days-off-controls">
+                    <div class="days-off-checkboxes">
+                        <label><input type="checkbox" id="offSunday"> Sunday</label>
+                        <label><input type="checkbox" id="offMonday"> Monday</label>
+                        <label><input type="checkbox" id="offTuesday"> Tuesday</label>
+                        <label><input type="checkbox" id="offWednesday"> Wednesday</label>
+                        <label><input type="checkbox" id="offThursday"> Thursday</label>
+                        <label><input type="checkbox" id="offFriday"> Friday</label>
+                        <label><input type="checkbox" id="offSaturday"> Saturday</label>
+                    </div>
+                    <div class="setting-group">
+                        <label>Off Day Color:</label>
+                        <input type="color" id="offDayColor" value="#f3f4f6">
+                    </div>
                 </div>
                 <div id="daysOffStatus" style="margin-top: 10px; font-size: 14px; color: #666;">
                     Auto-detected based on schedule
@@ -1343,6 +1377,7 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                                 <th>Start</th>
                                 <th>End</th>
                                 <th>Room</th>
+                                <th>🎨</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1369,6 +1404,7 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                                     <td>${s.startTime}</td>
                                     <td>${s.endTime}</td>
                                     <td>[${s.room}]</td>
+                                    <td><button class="color-btn" style="background-color: ${s.color}; width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer; position: relative;" onclick="changeSubjectColor('${s.code}')" title="Change color">🎨</button></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1457,7 +1493,7 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                         return;
                     }
                     
-                    if (daysOff.includes(day)) {
+                    if (getDaysOff().includes(day)) {
                         if (timeIndex === 0) {
                             // First row for off day - create spanning cell
                             
@@ -1740,6 +1776,45 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             document.getElementById('successContainer').innerHTML = '';
         }
 
+        function checkDaysOffConflicts() {
+            const conflicts = [];
+            const daysWithSessions = new Set();
+            
+            subjects.forEach(subject => {
+                daysWithSessions.add(subject.day.toLowerCase());
+            });
+            
+            // Check each day off checkbox
+            const dayCheckboxes = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            dayCheckboxes.forEach(day => {
+                const checkbox = document.getElementById(`off${day}`);
+                if (checkbox && checkbox.checked && daysWithSessions.has(day.toLowerCase())) {
+                    conflicts.push(day);
+                }
+            });
+            
+            if (conflicts.length > 0) {
+                showError(`⚠️ The following days are marked as 'Day Off' but have subjects: ${conflicts.join(', ')}`);
+                return false;
+            }
+            
+            return true;
+        }
+
+        function getDaysOff() {
+            const daysOff = [];
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            
+            dayNames.forEach(day => {
+                const checkbox = document.getElementById(`off${day.charAt(0).toUpperCase() + day.slice(1)}`);
+                if (checkbox && checkbox.checked) {
+                    daysOff.push(day);
+                }
+            });
+            
+            return daysOff;
+        }
+
         function getRandomColor() {
             const colors = [
                 '#4f46e5', '#7c3aed', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
@@ -1748,6 +1823,11 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             ];
             return colors[Math.floor(Math.random() * colors.length)];
         }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSubjectsList();
+        });
     </script>
 </body>
 </html>
