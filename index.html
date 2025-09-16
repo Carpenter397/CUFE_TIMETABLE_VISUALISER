@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Timetable Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .container {
+            background: rgba(45, 55, 72, 0.95);
+            color: #e2e8f0;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .floating-theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50px;
+            padding: 10px 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .floating-theme-toggle {
+            background: rgba(45, 55, 72, 0.9);
+            color: #e2e8f0;
+        }
+
+        .floating-theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .theme-btn:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+
+        .controls {
+            padding: 30px;
+            background: rgba(248, 250, 252, 0.8);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        body.dark-mode .controls {
+            background: rgba(30, 41, 59, 0.8);
+            border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+        }
+
+        .settings-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .settings-group {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        body.dark-mode .settings-group {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .settings-group h3 {
+            margin-bottom: 20px;
+            color: #374151;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        body.dark-mode .settings-group h3 {
+            color: #f9fafb;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #cbd5e1;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: #4f46e5;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active::after {
+            left: 33px;
+        }
+
+        .input-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        body.dark-mode .input-section {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .input-section h3 {
+            margin-bottom: 20px;
+            color: #374151;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        body.dark-mode .input-section h3 {
+            color: #f9fafb;
+        }
+
+        .input-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        body.dark-mode .input-tabs {
+            background: #2d3748;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: #64748b;
+        }
+
+        body.dark-mode .tab-btn {
+            color: #94a3b8;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #4f46e5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .tab-btn.active {
+            background: #4b5563;
+            color: #818cf8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+            resize: vertical;
+        }
+
+        body.dark-mode textarea,
+        body.dark-mode input,
+        body.dark-mode select {
+            background: #4b5563;
+            border-color: #6b7280;
+            color: #e5e7eb;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            margin-right: 15px;
+        }
+
+        .file-input-wrapper:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+            margin-bottom: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .days-off-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        body.dark-mode .days-off-section {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .days-off-section h3 {
+            margin-bottom: 20px;
+            color: #374151;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        body.dark-mode .days-off-section h3 {
+            color: #f9fafb;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .day-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: #f8fafc;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        body.dark-mode .day-checkbox {
+            background: #2d3748;
+        }
+
+        .day-checkbox:hover {
+            background: #e2e8f0;
+            border-color: #4f46e5;
+        }
+
+        body.dark-mode .day-checkbox:hover {
+            background: #4a5568;
+        }
+
+        .day-checkbox.selected {
+            background: #ede9fe;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+
+        body.dark-mode .day-checkbox.selected {
+            background: #553c9a;
+            color: #c4b5fd;
+        }
+
+        .day-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4f46e5;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-picker:hover {
+            transform: scale(1.1);
+        }
+
+        .subject-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .subject-item {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .subject-item {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .subject-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .subject-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .subject-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        body.dark-mode .subject-name {
+            color: #f9fafb;
+        }
+
+        .subject-details {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        body.dark-mode .subject-details {
+            color: #9ca3af;
+        }
+
+        .subject-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+
+        .subject-table th {
+            background: #f8fafc;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #e5e7eb;
+        }
+
+        body.dark-mode .subject-table th {
+            background: #2d3748;
+            border-color: #4b5563;
+        }
+
+        .subject-table td {
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        body.dark-mode .subject-table td {
+            border-color: #4b5563;
+        }
+
+        .timetable-container {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        .timetable {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        body.dark-mode .timetable {
+            background: #374151;
+        }
+
+        .timetable th {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .timetable th:last-child {
+            border-right: none;
+        }
+
+        .timetable td {
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+            font-size: 0.85rem;
+            font-weight: 500;
+            vertical-align: middle;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .timetable td {
+            border-color: #4b5563;
+            color: #e5e7eb;
+        }
+
+        .timetable td:hover {
+            background-color: rgba(79, 70, 229, 0.05) !important;
+        }
+
+        .time-slot {
+            background: #f8fafc !important;
+            font-weight: 600;
+            color: #374151;
+            width: 100px;
+        }
+
+        body.dark-mode .time-slot {
+            background: #2d3748 !important;
+            color: #cbd5e0;
+        }
+
+        .subject-cell {
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .subject-type {
+            display: block;
+            font-size: 0.7rem;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        .subject-room {
+            display: block;
+            font-size: 0.7rem;
+            opacity: 0.8;
+            margin-top: 1px;
+        }
+
+        .off-day {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        body.dark-mode .error-message {
+            background: #7f1d1d;
+            border-color: #991b1b;
+            color: #fca5a5;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        body.dark-mode .success-message {
+            background: #14532d;
+            border-color: #166534;
+            color: #86efac;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        body.dark-mode .stat-card {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 5px;
+        }
+
+        body.dark-mode .stat-number {
+            color: #818cf8;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        body.dark-mode .stat-label {
+            color: #9ca3af;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls {
+                padding: 20px;
+            }
+
+            .settings-section {
+                grid-template-columns: 1fr;
+            }
+
+            .timetable-container {
+                padding: 20px;
+            }
+
+            .timetable {
+                font-size: 0.8rem;
+            }
+
+            .timetable th,
+            .timetable td {
+                padding: 8px 4px;
+            }
+
+            .subject-list {
+                grid-template-columns: 1fr;
+            }
+
+            .btn {
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            .floating-theme-toggle {
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-theme-toggle">
+        <button class="theme-btn" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📚 Enhanced Timetable Visualizer</h1>
+            <p>Transform your schedule into a beautiful, interactive timetable</p>
+        </div>
+
+        <div class="controls">
+            <div class="settings-section">
+                <div class="settings-group">
+                    <h3>⚙️ Time Settings</h3>
+                    <div class="toggle-container">
+                        <span>🕐 Hour Format</span>
+                        <div class="toggle" id="hourFormatToggle"></div>
+                        <span>24H</span>
+                    </div>
+                    <div class="toggle-container">
+                        <span>🌙 Ramadan Mode</span>
+                        <div class="toggle" id="ramadanModeToggle"></div>
+                        <span>(45min slots)</span>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <h3>📊 Display Options</h3>
+                    <div class="toggle-container">
+                        <span>📱 Compact View</span>
+                        <div class="toggle" id="compactViewToggle"></div>
+                    </div>
+                    <div class="toggle-container">
+                        <span>🎨 Show Colors</span>
+                        <div class="toggle active" id="showColorsToggle"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>📝 Schedule Input</h3>
+                <div class="input-tabs">
+                    <button class="tab-btn active" data-tab="text">✏️ Text Input</button>
+                    <button class="tab-btn" data-tab="ocr">📷 OCR Upload</button>
+                </div>
+
+                <div class="tab-content active" id="text-tab">
+                    <textarea id="scheduleInput" rows="8" placeholder="Paste your schedule text here...
+
+Example format:
+Sunday
+MTHS003, Calculus 2 : Lecture At [20503] From 8:00 To 9:50
+MTHS003, Calculus 2 : Tutorial At [20503] From 10:00 To 12:50
+
+Monday
+MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
+                </div>
+
+                <div class="tab-content" id="ocr-tab">
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
+                        <label class="file-input-wrapper">
+                            📁 Choose Image
+                            <input type="file" id="imageInput" accept="image/*">
+                        </label>
+                        <button class="btn" id="processBtn">
+                            <span id="processText">🔍 Process Image</span>
+                            <div class="loading" id="loadingSpinner" style="display: none;"></div>
+                        </button>
+                    </div>
+                    <textarea id="ocrResult" rows="8" placeholder="OCR results will appear here..." readonly></textarea>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
+                    <button class="btn" id="parseBtn">✨ Parse Schedule</button>
+                    <button class="btn btn-secondary" id="clearBtn">🗑️ Clear All</button>
+                </div>
+            </div>
+
+            <div class="days-off-section">
+                <h3>🏖️ Days Off</h3>
+                <div class="days-grid">
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="sunday">
+                        <span>Sunday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="monday">
+                        <span>Monday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="tuesday">
+                        <span>Tuesday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="wednesday">
+                        <span>Wednesday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="thursday">
+                        <span>Thursday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="friday">
+                        <span>Friday</span>
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" value="saturday">
+                        <span>Saturday</span>
+                    </label>
+                </div>
+                <div class="color-picker-container">
+                    <label>Off Day Color:</label>
+                    <input type="color" class="color-picker" id="offDayColor" value="#fbbf24">
+                </div>
+            </div>
+
+            <div id="errorContainer"></div>
+            <div id="successContainer"></div>
+
+            <div id="subjectControls" style="display: none;">
+                <h3 style="margin-bottom: 20px; color: #374151;">📋 Subject Management</h3>
+                <div id="subjectList" class="subject-list"></div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
+                <button class="btn" id="generateBtn" style="display: none;">📅 Generate Timetable</button>
+                <button class="btn btn-secondary" id="exportBtn" style="display: none;">📊 Export to Excel</button>
+            </div>
+        </div>
+
+        <div id="statsContainer" style="display: none;">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSubjects">0</div>
+                    <div class="stat-label">Total Subjects</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalHours">0</div>
+                    <div class="stat-label">Weekly Hours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeDays">0</div>
+                    <div class="stat-label">Active Days</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="timetable-container">
+            <div id="timetableContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let parsedSubjects = [];
+        let isRamadanMode = false;
+        let isDarkMode = false;
+        let is24HourFormat = true;
+        let isCompactView = false;
+        let showColors = true;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadSettings();
+        });
+
+        function setupEventListeners() {
+            // Theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleDarkMode);
+            
+            // Settings toggles
+            document.getElementById('hourFormatToggle').addEventListener('click', toggleHourFormat);
+            document.getElementById('ramadanModeToggle').addEventListener('click', toggleRamadanMode);
+            document.getElementById('compactViewToggle').addEventListener('click', toggleCompactView);
+            document.getElementById('showColorsToggle').addEventListener('click', toggleShowColors);
+            
+            // Input tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+            });
+            
+            // Buttons
+            document.getElementById('processBtn').addEventListener('click', processOCR);
+            document.getElementById('parseBtn').addEventListener('click', parseSchedule);
+            document.getElementById('clearBtn').addEventListener('click', clearAll);
+            document.getElementById('generateBtn').addEventListener('click', generateTimetable);
+            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+            
+            // Days off checkboxes
+            document.querySelectorAll('.day-checkbox input').forEach(checkbox => {
+                checkbox.addEventListener('change', updateDayCheckbox);
+            });
+            
+            // Auto-parse text input
+            document.getElementById('scheduleInput').addEventListener('input', handleTextInput);
+        }
+
+        function loadSettings() {
+            const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+            const savedRamadanMode = localStorage.getItem('ramadanMode') === 'true';
+            const saved24Hour = localStorage.getItem('24HourFormat') !== 'false';
+            
+            if (savedDarkMode) {
+                toggleDarkMode();
+            }
+            if (savedRamadanMode) {
+                toggleRamadanMode();
+            }
+            if (!saved24Hour) {
+                toggleHourFormat();
+            }
+        }
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            document.getElementById('themeToggle').textContent = isDarkMode ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDarkMode);
+        }
+
+        function toggleHourFormat() {
+            is24HourFormat = !is24HourFormat;
+            document.getElementById('hourFormatToggle').classList.toggle('active', is24HourFormat);
+            localStorage.setItem('24HourFormat', is24HourFormat);
+            
+            if (parsedSubjects.length > 0) {
+                generateTimetable();
+            }
+        }
+
+        function toggleRamadanMode() {
+            isRamadanMode = !isRamadanMode;
+            document.getElementById('ramadanModeToggle').classList.toggle('active', isRamadanMode);
+            localStorage.setItem('ramadanMode', isRamadanMode);
+            
+            if (parsedSubjects.length > 0) {
+                generateTimetable();
+            }
+        }
+
+        function toggleCompactView() {
+            isCompactView = !isCompactView;
+            document.getElementById('compactViewToggle').classList.toggle('active', isCompactView);
+            localStorage.setItem('compactView', isCompactView);
+        }
+
+        function toggleShowColors() {
+            showColors = !showColors;
+            document.getElementById('showColorsToggle').classList.toggle('active', showColors);
+            localStorage.setItem('showColors', showColors);
+            
+            if (parsedSubjects.length > 0) {
+                generateTimetable();
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `${tabName}-tab`);
+            });
+        }
+
+        function updateDayCheckbox() {
+            document.querySelectorAll('.day-checkbox').forEach(label => {
+                const checkbox = label.querySelector('input');
+                label.classList.toggle('selected', checkbox.checked);
+            });
+        }
+
+        function handleTextInput() {
+            const text = document.getElementById('scheduleInput').value.trim();
+            if (text) {
+                try {
+                    const subjects = parseScheduleText(text);
+                    if (subjects.length > 0) {
+                        parsedSubjects = subjects;
+                        showSubjectControls();
+                        showSuccess(`Found ${subjects.length} subjects!`);
+                    }
+                } catch (error) {
+                    console.error('Parsing error:', error);
+                }
+            }
+        }
+
+        async function processOCR() {
+            const imageFile = document.getElementById('imageInput').files[0];
+            
+            if (!imageFile) {
+                showError('Please select an image file first.');
+                return;
+            }
+
+            setProcessingState(true);
+            clearMessages();
+
+            try {
+                const result = await Tesseract.recognize(imageFile, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            document.getElementById('processText').textContent = `Processing... ${progress}%`;
+                        }
+                    }
+                });
+
+                if (result && result.data && result.data.text) {
+                    document.getElementById('ocrResult').value = result.data.text;
+                    showSuccess('OCR processing completed! Review the text and click "Parse Schedule".');
+                } else {
+                    showError('OCR failed to extract text from image.');
+                }
+            } catch (error) {
+                console.error('OCR Error:', error);
+                showError(`OCR processing failed: ${error.message}`);
+            } finally {
+                setProcessingState(false);
+            }
+        }
+
+        function parseSchedule() {
+            const textInput = document.getElementById('scheduleInput').value.trim();
+            const ocrInput = document.getElementById('ocrResult').value.trim();
+            const scheduleText = textInput || ocrInput;
+
+            if (!scheduleText) {
+                showError('Please provide schedule text either by typing or using OCR.');
+                return;
+            }
+
+            try {
+                const subjects = parseScheduleText(scheduleText);
+                
+                if (subjects.length > 0) {
+                    parsedSubjects = subjects;
+                    showSubjectControls();
+                    showSuccess(`Successfully parsed ${subjects.length} subjects!`);
+                } else {
+                    showError('No subjects found. Please check your input format.');
+                }
+            } catch (error) {
+                console.error('Parsing error:', error);
+                showError(`Parsing error: ${error.message}`);
+            }
+        }
+
+        function parseScheduleText(text) {
+            if (!text || typeof text !== 'string') {
+                throw new Error('Invalid text input');
+            }
+
+            const subjects = [];
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            
+            let currentDay = '';
+            const dayPatterns = [
+                /^(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/i,
+                /^(sun|mon|tue|wed|thu|fri|sat)$/i,
+                /^(الأحد|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت)$/i
+            ];
+
+            // Enhanced patterns to match your format
+            const subjectPatterns = [
+                // Pattern 1: MTHS003, Calculus 2 : Lecture At [20503]20503-45-الجيزة الرئيسي From 8:00 To 9:50 - 1 -
+                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\][^F]*from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
+                
+                // Pattern 2: IPHYS002, Electricity and Magnetism : Lecture At [20511]2051 1-45—'__,_..4)" 334>J| From 8:00 To 10:50 - 2 -
+                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\][^F]*from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
+                
+                // Pattern 3: Simple format - PHYS002, Electricity and Magnetism : Lecture At [20511] From 8:00 To 10:50
+                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\]\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
+                
+                // Pattern 4: Without room - PHYS002, Electricity and Magnetism : Lecture From 8:00 To 10:50
+                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i
+            ];
+
+            for (const line of lines) {
+                // Check if line is a day
+                const isDayLine = dayPatterns.some(pattern => pattern.test(line));
+                
+                if (isDayLine) {
+                    currentDay = line.toLowerCase();
+                    // Normalize day names
+                    const dayMap = {
+                        'sun': 'sunday', 'mon': 'monday', 'tue': 'tuesday', 'wed': 'wednesday',
+                        'thu': 'thursday', 'fri': 'friday', 'sat': 'saturday',
+                        'الأحد': 'sunday', 'الاثنين': 'monday', 'الثلاثاء': 'tuesday',
+                        'الأربعاء': 'wednesday', 'الخميس': 'thursday', 'الجمعة': 'friday', 'السبت': 'saturday'
+                    };
+                    currentDay = dayMap[currentDay] || currentDay;
+                    continue;
+                }
+
+                // Try to match subject patterns
+                for (let i = 0; i < subjectPatterns.length; i++) {
+                    const pattern = subjectPatterns[i];
+                    const match = line.match(pattern);
+                    
+                    if (match && currentDay) {
+                        let subjectCode, subjectName, type, room, startTime, endTime;
+                        
+                        if (i === 3) { // Pattern without room
+                            [, subjectCode, subjectName, type, startTime, endTime] = match;
+                            room = 'TBA';
+                        } else {
+                            [, subjectCode, subjectName, type, room, startTime, endTime] = match;
+                        }
+
+                        // Clean up the data
+                        subjectName = (subjectName || '').trim().replace(/,$/, '');
+                        type = type.toLowerCase();
+                        room = room ? room.split(/[^A-Z0-9]/)[0] || room : 'TBA'; // Extract room number
+
+                        // Convert 12-hour to 24-hour if needed
+                        startTime = normalizeTime(startTime);
+                        endTime = normalizeTime(endTime);
+
+                        subjects.push({
+                            code: subjectCode.toUpperCase(),
+                            name: subjectName || subjectCode,
+                            type: type,
+                            day: currentDay,
+                            startTime: startTime,
+                            endTime: endTime,
+                            room: room,
+                            color: getRandomColor()
+                        });
+                        break;
+                    }
+                }
+            }
+
+            return subjects;
+        }
+
+        function normalizeTime(timeStr) {
+            let [hours, minutes] = timeStr.split(':').map(Number);
+            
+            // Handle PM times (assuming times after 12:00 are PM unless specified)
+            if (hours < 8 && hours !== 12) {
+                hours += 12;
+            }
+            
+            // Round minutes to nearest 15-minute interval for better display
+            minutes = Math.round(minutes / 15) * 15;
+            
+            if (minutes >= 60) {
+                hours += 1;
+                minutes = 0;
+            }
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        function showSubjectControls() {
+            const container = document.getElementById('subjectControls');
+            const listContainer = document.getElementById('subjectList');
+            
+            container.style.display = 'block';
+            listContainer.innerHTML = '';
+
+            // Group subjects by code
+            const subjectGroups = {};
+            parsedSubjects.forEach(subject => {
+                if (!subjectGroups[subject.code]) {
+                    subjectGroups[subject.code] = [];
+                }
+                subjectGroups[subject.code].push(subject);
+            });
+
+            Object.entries(subjectGroups).forEach(([code, subjects]) => {
+                const subjectDiv = document.createElement('div');
+                subjectDiv.className = 'subject-item';
+                
+                const types = [...new Set(subjects.map(s => s.type))].join(' + ');
+                const days = [...new Set(subjects.map(s => s.day))].join(', ');
+                
+                subjectDiv.innerHTML = `
+                    <div class="subject-header">
+                        <div>
+                            <div class="subject-name">${code}</div>
+                            <div class="subject-details">${subjects[0].name}</div>
+                        </div>
+                        <input type="color" class="color-picker" value="${subjects[0].color}" 
+                               onchange="updateSubjectColor('${code}', this.value)">
+                    </div>
+                    
+                    <table class="subject-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Type</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Room</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${subjects.map((s, index) => `
+                                <tr>
+                                    <td>
+                                        <select onchange="updateSubjectDay('${code}', ${index}, this.value)">
+                                            <option value="sunday" ${s.day === 'sunday' ? 'selected' : ''}>Sunday</option>
+                                            <option value="monday" ${s.day === 'monday' ? 'selected' : ''}>Monday</option>
+                                            <option value="tuesday" ${s.day === 'tuesday' ? 'selected' : ''}>Tuesday</option>
+                                            <option value="wednesday" ${s.day === 'wednesday' ? 'selected' : ''}>Wednesday</option>
+                                            <option value="thursday" ${s.day === 'thursday' ? 'selected' : ''}>Thursday</option>
+                                            <option value="friday" ${s.day === 'friday' ? 'selected' : ''}>Friday</option>
+                                            <option value="saturday" ${s.day === 'saturday' ? 'selected' : ''}>Saturday</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select onchange="updateSubjectType('${code}', ${index}, this.value)">
+                                            <option value="lecture" ${s.type === 'lecture' ? 'selected' : ''}>Lecture</option>
+                                            <option value="tutorial" ${s.type === 'tutorial' ? 'selected' : ''}>Tutorial</option>
+                                            <option value="lab" ${s.type === 'lab' ? 'selected' : ''}>Lab</option>
+                                        </select>
+                                    </td>
+                                    <td>${s.startTime}</td>
+                                    <td>${s.endTime}</td>
+                                    <td>[${s.room}]</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                listContainer.appendChild(subjectDiv);
+            });
+
+            document.getElementById('generateBtn').style.display = 'inline-block';
+            updateStats();
+        }
+
+        function updateSubjectColor(code, color) {
+            parsedSubjects.forEach(subject => {
+                if (subject.code === code) {
+                    subject.color = color;
+                }
+            });
+        }
+
+        function updateSubjectDay(code, index, day) {
+            const subjectIndex = parsedSubjects.findIndex((s, i) => s.code === code && parsedSubjects.filter(sub => sub.code === code).indexOf(s) === index);
+            if (subjectIndex !== -1) {
+                parsedSubjects[subjectIndex].day = day;
+            }
+        }
+
+        function updateSubjectType(code, index, type) {
+            const subjectIndex = parsedSubjects.findIndex((s, i) => s.code === code && parsedSubjects.filter(sub => sub.code === code).indexOf(s) === index);
+            if (subjectIndex !== -1) {
+                parsedSubjects[subjectIndex].type = type;
+            }
+        }
+
+        function generateTimetable() {
+            const daysOffCheckboxes = document.querySelectorAll('.day-checkbox input:checked');
+            const daysOff = Array.from(daysOffCheckboxes).map(cb => cb.value);
+            const offDayColor = document.getElementById('offDayColor').value;
+
+            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const timeSlots = isRamadanMode ? generateRamadanTimeSlots() : generateNormalTimeSlots();
+            
+            let html = '<table class="timetable"><thead><tr><th>Time</th>';
+            
+            days.forEach(day => {
+                const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+                html += `<th>${dayName}</th>`;
+            });
+            
+            html += '</tr></thead><tbody>';
+
+            // Track which cells are already occupied by rowspan
+            const occupiedCells = new Set();
+
+            timeSlots.forEach((timeSlot, timeIndex) => {
+                html += `<tr><td class="time-slot">${formatTime(timeSlot)}</td>`;
+                
+                days.forEach((day, dayIndex) => {
+                    const cellKey = `${timeIndex}-${dayIndex}`;
+                    
+                    if (occupiedCells.has(cellKey)) {
+                        // This cell is occupied by a rowspan from above
+                        return;
+                    }
+                    
+                    if (daysOff.includes(day)) {
+                        if (timeIndex === 0) {
+                            // First row for off day - create spanning cell
+                            html += `<td class="off-day" style="background: ${offDayColor} !important;" rowspan="${timeSlots.length}">Off</td>`;
+                            // Mark all cells in this column as occupied
+                            for (let i = 0; i < timeSlots.length; i++) {
+                                occupiedCells.add(`${i}-${dayIndex}`);
+                            }
+                        }
+                    } else {
+                        const subject = findSubjectForTimeSlot(day, timeSlot);
+                        if (subject) {
+                            const duration = calculateDuration(subject.startTime, subject.endTime, isRamadanMode);
+                            const backgroundColor = showColors ? subject.color : '#6b7280';
+                            
+                            html += `<td class="subject-cell" style="background-color: ${backgroundColor}" rowspan="${duration}">
+                                <div>${subject.code}</div>
+                                <div class="subject-type">${subject.type.charAt(0).toUpperCase() + subject.type.slice(1)}</div>
+                                <div class="subject-room">[${subject.room}]</div>
+                            </td>`;
+                            
+                            // Mark occupied cells
+                            for (let i = 0; i < duration; i++) {
+                                occupiedCells.add(`${timeIndex + i}-${dayIndex}`);
+                            }
+                        } else {
+                            html += '<td></td>';
+                        }
+                    }
+                });
+                
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            
+            document.getElementById('timetableContainer').innerHTML = html;
+            document.getElementById('exportBtn').style.display = 'inline-block';
+            document.getElementById('statsContainer').style.display = 'block';
+        }
+
+        function generateNormalTimeSlots() {
+            const slots = [];
+            for (let hour = 8; hour <= 20; hour++) {
+                slots.push(`${hour.toString().padStart(2, '0')}:00`);
+            }
+            return slots;
+        }
+
+        function generateRamadanTimeSlots() {
+            const slots = [];
+            // In Ramadan mode, generate 45-minute slots
+            for (let hour = 8; hour <= 20; hour++) {
+                slots.push(`${hour.toString().padStart(2, '0')}:00`);
+                if (hour < 20) {
+                    slots.push(`${hour.toString().padStart(2, '0')}:45`);
+                }
+            }
+            return slots;
+        }
+
+        function formatTime(timeStr) {
+            if (!is24HourFormat) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                const period = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+            }
+            return timeStr;
+        }
+
+        function findSubjectForTimeSlot(day, timeSlot) {
+            return parsedSubjects.find(subject => {
+                if (subject.day !== day) return false;
+                
+                const slotTime = timeToMinutes(timeSlot);
+                const startTime = timeToMinutes(subject.startTime);
+                const endTime = timeToMinutes(subject.endTime);
+                
+                return slotTime >= startTime && slotTime < endTime;
+            });
+        }
+
+        function calculateDuration(startTime, endTime, ramadanMode) {
+            const start = timeToMinutes(startTime);
+            const end = timeToMinutes(endTime);
+            const durationMinutes = end - start;
+            
+            if (ramadanMode) {
+                // In Ramadan mode, each slot is 45 minutes
+                return Math.ceil(durationMinutes / 45);
+            } else {
+                // Normal mode, each slot is 60 minutes
+                return Math.ceil(durationMinutes / 60);
+            }
+        }
+
+        function timeToMinutes(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function updateStats() {
+            const uniqueSubjects = [...new Set(parsedSubjects.map(s => s.code))].length;
+            const totalHours = parsedSubjects.reduce((total, subject) => {
+                const duration = timeToMinutes(subject.endTime) - timeToMinutes(subject.startTime);
+                return total + (duration / 60);
+            }, 0);
+            const activeDays = [...new Set(parsedSubjects.map(s => s.day))].length;
+
+            document.getElementById('totalSubjects').textContent = uniqueSubjects;
+            document.getElementById('totalHours').textContent = Math.round(totalHours);
+            document.getElementById('activeDays').textContent = activeDays;
+        }
+
+        function exportToExcel() {
+            const table = document.querySelector('.timetable');
+            if (!table) {
+                showError('No timetable to export. Please generate a timetable first.');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.table_to_book(table, {sheet: "Timetable"});
+                XLSX.writeFile(wb, `timetable_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showSuccess('Timetable exported successfully!');
+            } catch (error) {
+                showError('Failed to export timetable: ' + error.message);
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('scheduleInput').value = '';
+            document.getElementById('ocrResult').value = '';
+            document.getElementById('imageInput').value = '';
+            parsedSubjects = [];
+            
+            // Uncheck all day checkboxes
+            document.querySelectorAll('.day-checkbox input').forEach(cb => {
+                cb.checked = false;
+            });
+            updateDayCheckbox();
+            
+            document.getElementById('subjectControls').style.display = 'none';
+            document.getElementById('generateBtn').style.display = 'none';
+            document.getElementById('exportBtn').style.display = 'none';
+            document.getElementById('statsContainer').style.display = 'none';
+            document.getElementById('timetableContainer').innerHTML = '';
+            
+            clearMessages();
+            setProcessingState(false);
+        }
+
+        function setProcessingState(processing) {
+            const processBtn = document.getElementById('processBtn');
+            const processText = document.getElementById('processText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            processBtn.disabled = processing;
+            
+            if (processing) {
+                processText.style.display = 'none';
+                loadingSpinner.style.display = 'inline-block';
+            } else {
+                processText.style.display = 'inline';
+                processText.textContent = '🔍 Process Image';
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        function showSuccess(message) {
+            const container = document.getElementById('successContainer');
+            container.innerHTML = `<div class="success-message">✅ ${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        function clearMessages() {
+            document.getElementById('errorContainer').innerHTML = '';
+            document.getElementById('successContainer').innerHTML = '';
+        }
+
+        function getRandomColor() {
+            const colors = [
+                '#4f46e5', '#7c3aed', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
+                '#65a30d', '#16a34a', '#059669', '#0d9488', '#0891b2', '#0284c7',
+                '#2563eb', '#4338ca', '#7c2d12', '#a21caf', '#be185d', '#e11d48'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+    </script>
+</body>
+</html>
