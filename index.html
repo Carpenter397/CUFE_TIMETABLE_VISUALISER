@@ -793,25 +793,13 @@
                     <div class="setting-row">
                         <div class="setting-item">
                             <label for="startTime">Day Start:</label>
-                            <select id="startTime" onchange="generateTimetable()">
-                                <option value="6">6:00 AM</option>
-                                <option value="7">7:00 AM</option>
-                                <option value="8" selected>8:00 AM</option>
-                                <option value="9">9:00 AM</option>
-                                <option value="10">10:00 AM</option>
-                            </select>
+                            <input type="number" id="startTime" value="8" min="1" max="23" style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onchange="generateTimetable()">
+                            <span>:00</span>
                         </div>
                         <div class="setting-item">
                             <label for="endTime">Day End:</label>
-                            <select id="endTime" onchange="generateTimetable()">
-                                <option value="16">4:00 PM</option>
-                                <option value="17">5:00 PM</option>
-                                <option value="18" selected>6:00 PM</option>
-                                <option value="19">7:00 PM</option>
-                                <option value="20">8:00 PM</option>
-                                <option value="21">9:00 PM</option>
-                                <option value="22">10:00 PM</option>
-                            </select>
+                            <input type="number" id="endTime" value="18" min="1" max="23" style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onchange="generateTimetable()">
+                            <span>:00</span>
                         </div>
                     </div>
                     <div class="setting-row">
@@ -821,6 +809,9 @@
                                 <option value="0" selected>Sunday</option>
                                 <option value="1">Monday</option>
                                 <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
                                 <option value="6">Saturday</option>
                             </select>
                         </div>
@@ -894,39 +885,15 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
 
             <div class="days-off-section">
                 <h3>🏖️ Days Off</h3>
-                <div class="days-grid">
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="sunday">
-                        <span>Sunday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="monday">
-                        <span>Monday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="tuesday">
-                        <span>Tuesday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="wednesday">
-                        <span>Wednesday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="thursday">
-                        <span>Thursday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="friday">
-                        <span>Friday</span>
-                    </label>
-                    <label class="day-checkbox">
-                        <input type="checkbox" value="saturday">
-                        <span>Saturday</span>
-                    </label>
+                <div class="setting-row">
+                    <label>Days Off Color:</label>
+                    <input type="color" id="offDayColor" value="#f0f0f0">
                 </div>
-                <div class="color-picker-container">
-                    <label>Off Day Color:</label>
-                    <input type="color" class="color-picker" id="offDayColor" value="#fbbf24">
+                <div id="daysOffStatus" style="margin-top: 10px; font-size: 14px; color: #666;">
+                    Auto-detected based on schedule
+                </div>
+                <div class="days-off-grid" id="daysOffGrid" style="margin-top: 10px;">
+                    <!-- Auto-populated based on schedule -->
                 </div>
             </div>
 
@@ -1438,11 +1405,9 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
         }
 
         function generateTimetable() {
-            const startHour = parseInt(document.getElementById('startTime').value);
-            const endHour = parseInt(document.getElementById('endTime').value);
+            const startHour = parseInt(document.getElementById('startTime').value) || 8;
+            const endHour = parseInt(document.getElementById('endTime').value) || 18;
             const startDay = parseInt(document.getElementById('startDay').value);
-            const daysOffCheckboxes = document.querySelectorAll('.day-checkbox input:checked');
-            const daysOff = Array.from(daysOffCheckboxes).map(cb => cb.value);
             const offDayColor = document.getElementById('offDayColor').value;
 
             if (endHour <= startHour) {
@@ -1457,6 +1422,15 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             for (let i = 0; i < 7; i++) {
                 days.push(allDays[(startDay + i) % 7]);
             }
+
+            // Auto-detect days off
+            const daysWithSessions = new Set();
+            parsedSubjects.forEach(subject => {
+                daysWithSessions.add(subject.day);
+            });
+            
+            const daysOff = days.filter(day => !daysWithSessions.has(day));
+            updateDaysOffDisplay(daysOff, daysWithSessions);
 
             const timeSlots = isRamadanMode ? generateRamadanTimeSlots(startHour, endHour) : generateNormalTimeSlots(startHour, endHour);
             
@@ -1536,6 +1510,36 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                 const message = conflictMessages.join('\n');
                 alert('⚠️ Schedule Conflicts Detected:\n\n' + message);
             }
+        }
+
+        function updateDaysOffDisplay(daysOff, daysWithSessions) {
+            const grid = document.getElementById('daysOffGrid');
+            const status = document.getElementById('daysOffStatus');
+            
+            if (daysOff.length === 0) {
+                status.textContent = 'No days off detected - all days have sessions';
+                grid.innerHTML = '';
+            } else {
+                status.textContent = `Auto-detected days off: ${daysOff.join(', ')}`;
+                grid.innerHTML = daysOff.map(day => 
+                    `<label><input type="checkbox" id="off${day}" checked onchange="handleDayOffChange('${day}', this.checked)"> ${day}</label>`
+                ).join('');
+            }
+        }
+        
+        function handleDayOffChange(day, isChecked) {
+            // Check if day has sessions
+            const hasSession = parsedSubjects.some(subject => subject.day === day);
+            
+            if (isChecked && hasSession) {
+                const sessionsInDay = parsedSubjects.filter(subject => subject.day === day).map(s => s.code);
+                
+                alert(`⚠️ ${day} has subjects: ${sessionsInDay.join(', ')}. Please remove these subjects first or choose a different day.`);
+                document.getElementById(`off${day}`).checked = false;
+                return;
+            }
+            
+            generateTimetable();
         }
 
         function isDayOff(day) {
@@ -1631,60 +1635,37 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
         }
 
         async function exportToPNG() {
-            try {
-                // Import html2canvas dynamically
+            const timetableContainer = document.getElementById('timetableContainer');
+            if (!timetableContainer || !timetableContainer.querySelector('.timetable')) {
+                alert('Please generate a timetable first!');
+                return;
+            }
+            
+            // Import html2canvas library
+            if (typeof html2canvas === 'undefined') {
                 const script = document.createElement('script');
                 script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                document.head.appendChild(script);
-                
-                script.onload = async function() {
-                    const timetableElement = document.getElementById('timetable');
-                    if (!timetableElement.innerHTML.trim()) {
-                        alert('Please generate a timetable first!');
-                        return;
-                    }
-                    
-                    // Create a temporary container with better styling for export
-                    const exportContainer = document.createElement('div');
-                    exportContainer.style.cssText = `
-                        background: white;
-                        padding: 20px;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        position: absolute;
-                        top: -9999px;
-                        left: -9999px;
-                    `;
-                    
-                    // Add title
-                    const title = document.createElement('h2');
-                    title.textContent = 'My Timetable';
-                    title.style.cssText = 'text-align: center; margin-bottom: 20px; color: #333;';
-                    exportContainer.appendChild(title);
-                    
-                    // Clone the timetable
-                    const clonedTable = timetableElement.cloneNode(true);
-                    exportContainer.appendChild(clonedTable);
-                    
-                    document.body.appendChild(exportContainer);
-                    
-                    const canvas = await html2canvas(exportContainer, {
-                        backgroundColor: '#ffffff',
-                        scale: 2,
-                        useCORS: true
-                    });
-                    
-                    document.body.removeChild(exportContainer);
-                    
-                    // Download the image
-                    const link = document.createElement('a');
-                    link.download = 'timetable.png';
-                    link.href = canvas.toDataURL();
-                    link.click();
+                script.onload = function() {
+                    exportToPNG();
                 };
-            } catch (error) {
+                document.head.appendChild(script);
+                return;
+            }
+            
+            const table = timetableContainer.querySelector('.timetable');
+            html2canvas(table, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'timetable.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }).catch(error => {
                 console.error('Export error:', error);
                 alert('Error exporting image: ' + error.message);
-            }
+            });
         }
 
         function exportToExcel() {
