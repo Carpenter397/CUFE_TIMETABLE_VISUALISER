@@ -694,6 +694,35 @@
             color: #9ca3af;
         }
 
+        #uploadStatus.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        #uploadStatus.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -761,6 +790,41 @@
             <div class="settings-section">
                 <div class="settings-group">
                     <h3>⚙️ Time Settings</h3>
+                    <div class="setting-row">
+                        <div class="setting-item">
+                            <label for="startTime">Day Start:</label>
+                            <select id="startTime" onchange="generateTimetable()">
+                                <option value="6">6:00 AM</option>
+                                <option value="7">7:00 AM</option>
+                                <option value="8" selected>8:00 AM</option>
+                                <option value="9">9:00 AM</option>
+                                <option value="10">10:00 AM</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="endTime">Day End:</label>
+                            <select id="endTime" onchange="generateTimetable()">
+                                <option value="16">4:00 PM</option>
+                                <option value="17">5:00 PM</option>
+                                <option value="18" selected>6:00 PM</option>
+                                <option value="19">7:00 PM</option>
+                                <option value="20">8:00 PM</option>
+                                <option value="21">9:00 PM</option>
+                                <option value="22">10:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-item">
+                            <label for="startDay">Week Starts:</label>
+                            <select id="startDay" onchange="generateTimetable()">
+                                <option value="0" selected>Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="toggle-container">
                         <span>🕐 Hour Format</span>
                         <div class="toggle" id="hourFormatToggle"></div>
@@ -815,6 +879,9 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                             <span id="processText">🔍 Process Image</span>
                             <div class="loading" id="loadingSpinner" style="display: none;"></div>
                         </button>
+                    </div>
+                    <div id="uploadStatus" style="margin-bottom: 10px; padding: 8px; border-radius: 4px; display: none;">
+                        <span id="uploadStatusText"></span>
                     </div>
                     <textarea id="ocrResult" rows="8" placeholder="OCR results will appear here..." readonly></textarea>
                 </div>
@@ -874,6 +941,7 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
                 <button class="btn" id="generateBtn" style="display: none;">📅 Generate Timetable</button>
                 <button class="btn btn-secondary" id="exportBtn" style="display: none;">📊 Export to Excel</button>
+                <button onclick="exportToPNG()" class="export-btn">🖼️ Export as PNG</button>
             </div>
         </div>
 
@@ -906,6 +974,12 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
         let is24HourFormat = true;
         let isCompactView = false;
         let showColors = true;
+        let subjects = [];
+        let subjectColors = {};
+        let conflictMessages = [];
+
+        // Initialize OCR
+        document.getElementById('imageInput').addEventListener('change', handleImageUpload);
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1038,6 +1112,38 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             }
         }
 
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            showUploadStatus('Uploading image...', 'info');
+
+            try {
+                const { data: { text } } = await Tesseract.recognize(file, 'eng');
+                document.getElementById('ocrResult').value = text;
+                showUploadStatus('✅ Image uploaded and processed successfully!', 'success');
+            } catch (error) {
+                console.error('OCR Error:', error);
+                alert('Error processing image: ' + error.message);
+                showUploadStatus('❌ Error processing image', 'error');
+            }
+        }
+        
+        function showUploadStatus(message, type) {
+            const statusDiv = document.getElementById('uploadStatus');
+            const statusText = document.getElementById('uploadStatusText');
+            
+            statusText.textContent = message;
+            statusDiv.className = type;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
         async function processOCR() {
             const imageFile = document.getElementById('imageInput').files[0];
             
@@ -1070,6 +1176,28 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                 showError(`OCR processing failed: ${error.message}`);
             } finally {
                 setProcessingState(false);
+            }
+        }
+
+        function parseSubjects() {
+            const textInput = document.getElementById('textInput').value.trim();
+            const ocrInput = document.getElementById('ocrResult').value.trim();
+            const input = textInput || ocrInput;
+
+            if (!input) {
+                alert('Please enter some text or upload an image first.');
+                return;
+            }
+            
+            conflictMessages = [];
+
+            try {
+                subjects = parseScheduleText(input);
+                displaySubjects();
+                generateTimetable();
+            } catch (error) {
+                console.error('Parsing error:', error);
+                alert('Error parsing schedule: ' + error.message);
             }
         }
 
@@ -1310,12 +1438,27 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
         }
 
         function generateTimetable() {
+            const startHour = parseInt(document.getElementById('startTime').value);
+            const endHour = parseInt(document.getElementById('endTime').value);
+            const startDay = parseInt(document.getElementById('startDay').value);
             const daysOffCheckboxes = document.querySelectorAll('.day-checkbox input:checked');
             const daysOff = Array.from(daysOffCheckboxes).map(cb => cb.value);
             const offDayColor = document.getElementById('offDayColor').value;
 
-            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const timeSlots = isRamadanMode ? generateRamadanTimeSlots() : generateNormalTimeSlots();
+            if (endHour <= startHour) {
+                alert('End time must be after start time!');
+                return;
+            }
+
+            const allDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const days = [];
+            
+            // Reorder days based on start day
+            for (let i = 0; i < 7; i++) {
+                days.push(allDays[(startDay + i) % 7]);
+            }
+
+            const timeSlots = isRamadanMode ? generateRamadanTimeSlots(startHour, endHour) : generateNormalTimeSlots(startHour, endHour);
             
             let html = '<table class="timetable"><thead><tr><th>Time</th>';
             
@@ -1343,6 +1486,14 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                     if (daysOff.includes(day)) {
                         if (timeIndex === 0) {
                             // First row for off day - create spanning cell
+                            
+                            // Check for conflicts
+                            const daySubjects = parsedSubjects.filter(s => s.day === day);
+                            if (daySubjects.length > 0) {
+                                const subjectNames = daySubjects.map(s => s.name).join(', ');
+                                conflictMessages.push(`${day} is marked as "Day Off" but has subjects: ${subjectNames}`);
+                            }
+                            
                             html += `<td class="off-day" style="background: ${offDayColor} !important;" rowspan="${timeSlots.length}">Off</td>`;
                             // Mark all cells in this column as occupied
                             for (let i = 0; i < timeSlots.length; i++) {
@@ -1379,22 +1530,46 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             document.getElementById('timetableContainer').innerHTML = html;
             document.getElementById('exportBtn').style.display = 'inline-block';
             document.getElementById('statsContainer').style.display = 'block';
+            
+            // Show conflict messages if any
+            if (conflictMessages.length > 0) {
+                const message = conflictMessages.join('\n');
+                alert('⚠️ Schedule Conflicts Detected:\n\n' + message);
+            }
         }
 
-        function generateNormalTimeSlots() {
+        function isDayOff(day) {
+            return document.getElementById(day.toLowerCase() + 'Off').checked;
+        }
+
+        function generateTimeSlots(startHour, endHour, isRamadan, is24Hour) {
             const slots = [];
-            for (let hour = 8; hour <= 20; hour++) {
+            const increment = isRamadan ? 0.75 : 1; // 45 minutes or 60 minutes
+
+            for (let hour = startHour; hour < endHour; hour += increment) {
+                const wholeHour = Math.floor(hour);
+                const minutes = (hour - wholeHour) * 60;
+                const timeStr = `${wholeHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                slots.push(timeStr);
+            }
+
+            return slots;
+        }
+
+        function generateNormalTimeSlots(startHour, endHour) {
+            const slots = [];
+            for (let hour = startHour; hour < endHour; hour++) {
                 slots.push(`${hour.toString().padStart(2, '0')}:00`);
             }
             return slots;
         }
 
-        function generateRamadanTimeSlots() {
+        function generateRamadanTimeSlots(startHour, endHour) {
             const slots = [];
             // In Ramadan mode, generate 45-minute slots
-            for (let hour = 8; hour <= 20; hour++) {
+            for (let hour = startHour; hour < endHour; hour++) {
                 slots.push(`${hour.toString().padStart(2, '0')}:00`);
-                if (hour < 20) {
+                if (hour < endHour - 1) {
                     slots.push(`${hour.toString().padStart(2, '0')}:45`);
                 }
             }
@@ -1453,6 +1628,63 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             document.getElementById('totalSubjects').textContent = uniqueSubjects;
             document.getElementById('totalHours').textContent = Math.round(totalHours);
             document.getElementById('activeDays').textContent = activeDays;
+        }
+
+        async function exportToPNG() {
+            try {
+                // Import html2canvas dynamically
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                document.head.appendChild(script);
+                
+                script.onload = async function() {
+                    const timetableElement = document.getElementById('timetable');
+                    if (!timetableElement.innerHTML.trim()) {
+                        alert('Please generate a timetable first!');
+                        return;
+                    }
+                    
+                    // Create a temporary container with better styling for export
+                    const exportContainer = document.createElement('div');
+                    exportContainer.style.cssText = `
+                        background: white;
+                        padding: 20px;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        position: absolute;
+                        top: -9999px;
+                        left: -9999px;
+                    `;
+                    
+                    // Add title
+                    const title = document.createElement('h2');
+                    title.textContent = 'My Timetable';
+                    title.style.cssText = 'text-align: center; margin-bottom: 20px; color: #333;';
+                    exportContainer.appendChild(title);
+                    
+                    // Clone the timetable
+                    const clonedTable = timetableElement.cloneNode(true);
+                    exportContainer.appendChild(clonedTable);
+                    
+                    document.body.appendChild(exportContainer);
+                    
+                    const canvas = await html2canvas(exportContainer, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        useCORS: true
+                    });
+                    
+                    document.body.removeChild(exportContainer);
+                    
+                    // Download the image
+                    const link = document.createElement('a');
+                    link.download = 'timetable.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                };
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting image: ' + error.message);
+            }
         }
 
         function exportToExcel() {
