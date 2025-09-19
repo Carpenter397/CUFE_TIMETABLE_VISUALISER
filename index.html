@@ -6,6 +6,7 @@
     <title>Enhanced Timetable Visualizer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -72,6 +73,7 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         body.dark-mode .floating-theme-toggle {
@@ -137,6 +139,39 @@
 
         body.dark-mode .settings-group h3 {
             color: #f9fafb;
+        }
+
+        .time-setting-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .time-setting-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time-setting-item label {
+            font-weight: 500;
+            min-width: 80px;
+        }
+
+        .time-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            width: 120px;
+            text-align: center;
+        }
+
+        body.dark-mode .time-input {
+            background: #4b5563;
+            border-color: #6b7280;
+            color: #e5e7eb;
         }
 
         .toggle-container {
@@ -379,12 +414,18 @@
             color: #f9fafb;
         }
 
-        .days-grid {
+        .days-off-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .days-off-checkboxes {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 15px;
         }
-
+        
         .day-checkbox {
             display: flex;
             align-items: center;
@@ -528,6 +569,31 @@
 
         body.dark-mode .subject-table td {
             border-color: #4b5563;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 16px;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-btn::before {
+            content: '🎨';
+            font-size: 14px;
         }
 
         .timetable-container {
@@ -694,58 +760,6 @@
             color: #9ca3af;
         }
 
-        #uploadStatus.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        #uploadStatus.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .export-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 5px;
-            transition: all 0.3s ease;
-        }
-        
-        .export-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .days-off-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .days-off-checkboxes {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .days-off-checkboxes label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-        }
-        
-        .days-off-checkboxes input[type="checkbox"] {
-            margin: 0 5px 0 0;
-        }
-
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -766,6 +780,11 @@
 
             .settings-section {
                 grid-template-columns: 1fr;
+            }
+
+            .time-setting-row {
+                flex-direction: column;
+                gap: 10px;
             }
 
             .timetable-container {
@@ -799,7 +818,7 @@
     </style>
 </head>
 <body>
-    <div class="floating-theme-toggle">
+    <div class="floating-theme-toggle" onclick="toggleDarkMode()">
         <button class="theme-btn" id="themeToggle" title="Toggle Dark Mode">🌙</button>
     </div>
 
@@ -813,20 +832,18 @@
             <div class="settings-section">
                 <div class="settings-group">
                     <h3>⚙️ Time Settings</h3>
-                    <div class="setting-row">
-                        <div class="setting-item">
+                    <div class="time-setting-row">
+                        <div class="time-setting-item">
                             <label for="startTime">Day Start:</label>
-                            <input type="number" id="startTime" value="8" min="1" max="23" style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onchange="generateTimetable()">
-                            <span>:00</span>
+                            <input type="time" id="startTime" class="time-input" value="08:00" onchange="generateTimetable()">
                         </div>
-                        <div class="setting-item">
+                        <div class="time-setting-item">
                             <label for="endTime">Day End:</label>
-                            <input type="number" id="endTime" value="18" min="1" max="23" style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 4px;" onchange="generateTimetable()">
-                            <span>:00</span>
+                            <input type="time" id="endTime" class="time-input" value="18:00" onchange="generateTimetable()">
                         </div>
                     </div>
-                    <div class="setting-row">
-                        <div class="setting-item">
+                    <div class="time-setting-row">
+                        <div class="time-setting-item">
                             <label for="startDay">Week Starts:</label>
                             <select id="startDay" onchange="generateTimetable()">
                                 <option value="0" selected>Sunday</option>
@@ -841,12 +858,12 @@
                     </div>
                     <div class="toggle-container">
                         <span>🕐 Hour Format</span>
-                        <div class="toggle" id="hourFormatToggle"></div>
+                        <div class="toggle active" id="hourFormatToggle" onclick="toggleHourFormat()"></div>
                         <span>24H</span>
                     </div>
                     <div class="toggle-container">
                         <span>🌙 Ramadan Mode</span>
-                        <div class="toggle" id="ramadanModeToggle"></div>
+                        <div class="toggle" id="ramadanModeToggle" onclick="toggleRamadanMode()"></div>
                         <span>(45min slots)</span>
                     </div>
                 </div>
@@ -855,11 +872,11 @@
                     <h3>📊 Display Options</h3>
                     <div class="toggle-container">
                         <span>📱 Compact View</span>
-                        <div class="toggle" id="compactViewToggle"></div>
+                        <div class="toggle" id="compactViewToggle" onclick="toggleCompactView()"></div>
                     </div>
                     <div class="toggle-container">
                         <span>🎨 Show Colors</span>
-                        <div class="toggle active" id="showColorsToggle"></div>
+                        <div class="toggle active" id="showColorsToggle" onclick="toggleShowColors()"></div>
                     </div>
                 </div>
             </div>
@@ -867,8 +884,8 @@
             <div class="input-section">
                 <h3>📝 Schedule Input</h3>
                 <div class="input-tabs">
-                    <button class="tab-btn active" data-tab="text">✏️ Text Input</button>
-                    <button class="tab-btn" data-tab="ocr">📷 OCR Upload</button>
+                    <button class="tab-btn active" data-tab="text" onclick="switchTab('text')">✏️ Text Input</button>
+                    <button class="tab-btn" data-tab="ocr" onclick="switchTab('ocr')">📷 OCR Upload</button>
                 </div>
 
                 <div class="tab-content active" id="text-tab">
@@ -887,9 +904,9 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                     <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
                         <label class="file-input-wrapper">
                             📁 Choose Image
-                            <input type="file" id="imageInput" accept="image/*">
+                            <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload()">
                         </label>
-                        <button class="btn" id="processBtn">
+                        <button class="btn" id="processBtn" onclick="processOCR()">
                             <span id="processText">🔍 Process Image</span>
                             <div class="loading" id="loadingSpinner" style="display: none;"></div>
                         </button>
@@ -901,631 +918,451 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                 </div>
 
                 <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
-                    <button class="btn" id="parseBtn">✨ Parse Schedule</button>
-                    <button class="btn btn-secondary" id="clearBtn">🗑️ Clear All</button>
+                    <button class="btn" id="parseBtn" onclick="parseSchedule()">✨ Parse Schedule</button>
+                    <button class="btn btn-secondary" id="clearBtn" onclick="clearAll()">🗑️ Clear All</button>
                 </div>
             </div>
 
             <div class="days-off-section">
-                <h3>🏖️ Days Off</h3>
+                <h3>🖐️ Days Off</h3>
                 <div class="days-off-controls">
                     <div class="days-off-checkboxes">
-                        <label><input type="checkbox" id="offSunday"> Sunday</label>
-                        <label><input type="checkbox" id="offMonday"> Monday</label>
-                        <label><input type="checkbox" id="offTuesday"> Tuesday</label>
-                        <label><input type="checkbox" id="offWednesday"> Wednesday</label>
-                        <label><input type="checkbox" id="offThursday"> Thursday</label>
-                        <label><input type="checkbox" id="offFriday"> Friday</label>
-                        <label><input type="checkbox" id="offSaturday"> Saturday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offSunday" onchange="updateDayCheckbox()"> Sunday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offMonday" onchange="updateDayCheckbox()"> Monday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offTuesday" onchange="updateDayCheckbox()"> Tuesday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offWednesday" onchange="updateDayCheckbox()"> Wednesday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offThursday" onchange="updateDayCheckbox()"> Thursday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offFriday" onchange="updateDayCheckbox()"> Friday</label>
+                        <label class="day-checkbox"><input type="checkbox" id="offSaturday" onchange="updateDayCheckbox()"> Saturday</label>
                     </div>
-                    <div class="setting-group">
-                        <label>Off Day Color:</label>
-                        <input type="color" id="offDayColor" value="#f3f4f6">
+                    <div class="color-picker-container">
+                        <label for="offDayColor">Off Day Color:</label>
+                        <input type="color" id="offDayColor" class="color-picker" value="#f59e0b" onchange="generateTimetable()">
                     </div>
                 </div>
-                <div id="daysOffStatus" style="margin-top: 10px; font-size: 14px; color: #666;">
-                    Auto-detected based on schedule
-                </div>
-                <div class="days-off-grid" id="daysOffGrid" style="margin-top: 10px;">
-                    <!-- Auto-populated based on schedule -->
-                </div>
             </div>
 
-            <div id="errorContainer"></div>
-            <div id="successContainer"></div>
-
-            <div id="subjectControls" style="display: none;">
-                <h3 style="margin-bottom: 20px; color: #374151;">📋 Subject Management</h3>
-                <div id="subjectList" class="subject-list"></div>
-            </div>
-
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
-                <button class="btn" id="generateBtn" style="display: none;">📅 Generate Timetable</button>
-                <button class="btn btn-secondary" id="exportBtn" style="display: none;">📊 Export to Excel</button>
-                <button onclick="exportToPNG()" class="export-btn">🖼️ Export as PNG</button>
-            </div>
-        </div>
-
-        <div id="statsContainer" style="display: none;">
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalSubjects">0</div>
-                    <div class="stat-label">Total Subjects</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="totalHours">0</div>
-                    <div class="stat-label">Weekly Hours</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="activeDays">0</div>
-                    <div class="stat-label">Active Days</div>
-                </div>
-            </div>
+            <div id="subjectsList" class="subject-list"></div>
         </div>
 
         <div class="timetable-container">
-            <div id="timetableContainer"></div>
+            <div id="timetableDisplay"></div>
         </div>
     </div>
 
     <script>
-        let parsedSubjects = [];
-        let isRamadanMode = false;
-        let isDarkMode = false;
-        let is24HourFormat = true;
-        let isCompactView = false;
-        let showColors = true;
+        // Global variables
         let subjects = [];
-        let subjectColors = {};
-        let conflictMessages = [];
+        let isRamadanMode = false;
+        let is24HourFormat = true;
+        let showColors = true;
+        let compactView = false;
 
-        // Initialize OCR
-        document.getElementById('imageInput').addEventListener('change', handleImageUpload);
-
-        // Initialize
+        // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            setupEventListeners();
             loadSettings();
+            autoDetectDaysOff();
         });
 
-        function setupEventListeners() {
-            // Theme toggle
-            document.getElementById('themeToggle').addEventListener('click', toggleDarkMode);
+        // Handle image upload with visual feedback
+        function handleImageUpload() {
+            const fileInput = document.getElementById('imageInput');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadStatusText = document.getElementById('uploadStatusText');
             
-            // Settings toggles
-            document.getElementById('hourFormatToggle').addEventListener('click', toggleHourFormat);
-            document.getElementById('ramadanModeToggle').addEventListener('click', toggleRamadanMode);
-            document.getElementById('compactViewToggle').addEventListener('click', toggleCompactView);
-            document.getElementById('showColorsToggle').addEventListener('click', toggleShowColors);
-            
-            // Input tabs
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-            });
-            
-            // Buttons
-            document.getElementById('processBtn').addEventListener('click', processOCR);
-            document.getElementById('parseBtn').addEventListener('click', parseSchedule);
-            document.getElementById('clearBtn').addEventListener('click', clearAll);
-            document.getElementById('generateBtn').addEventListener('click', generateTimetable);
-            document.getElementById('exportBtn').addEventListener('click', exportToExcel);
-            
-            // Days off checkboxes
-            document.querySelectorAll('.day-checkbox input').forEach(checkbox => {
-                checkbox.addEventListener('change', updateDayCheckbox);
-            });
-            
-            // Auto-parse text input
-            document.getElementById('scheduleInput').addEventListener('input', handleTextInput);
-        }
-
-        function loadSettings() {
-            const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-            const savedRamadanMode = localStorage.getItem('ramadanMode') === 'true';
-            const saved24Hour = localStorage.getItem('24HourFormat') !== 'false';
-            
-            if (savedDarkMode) {
-                toggleDarkMode();
-            }
-            if (savedRamadanMode) {
-                toggleRamadanMode();
-            }
-            if (!saved24Hour) {
-                toggleHourFormat();
-            }
-        }
-
-        function toggleDarkMode() {
-            isDarkMode = !isDarkMode;
-            document.body.classList.toggle('dark-mode', isDarkMode);
-            document.getElementById('themeToggle').textContent = isDarkMode ? '☀️' : '🌙';
-            localStorage.setItem('darkMode', isDarkMode);
-        }
-
-        function toggleHourFormat() {
-            is24HourFormat = !is24HourFormat;
-            document.getElementById('hourFormatToggle').classList.toggle('active', is24HourFormat);
-            localStorage.setItem('24HourFormat', is24HourFormat);
-            
-            if (parsedSubjects.length > 0) {
-                generateTimetable();
-            }
-        }
-
-        function toggleRamadanMode() {
-            isRamadanMode = !isRamadanMode;
-            document.getElementById('ramadanModeToggle').classList.toggle('active', isRamadanMode);
-            localStorage.setItem('ramadanMode', isRamadanMode);
-            
-            if (parsedSubjects.length > 0) {
-                generateTimetable();
-            }
-        }
-
-        function toggleCompactView() {
-            isCompactView = !isCompactView;
-            document.getElementById('compactViewToggle').classList.toggle('active', isCompactView);
-            localStorage.setItem('compactView', isCompactView);
-        }
-
-        function toggleShowColors() {
-            showColors = !showColors;
-            document.getElementById('showColorsToggle').classList.toggle('active', showColors);
-            localStorage.setItem('showColors', showColors);
-            
-            if (parsedSubjects.length > 0) {
-                generateTimetable();
-            }
-        }
-
-        function switchTab(tabName) {
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tabName);
-            });
-            
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.toggle('active', content.id === `${tabName}-tab`);
-            });
-        }
-
-        function updateDayCheckbox() {
-            document.querySelectorAll('.day-checkbox').forEach(label => {
-                const checkbox = label.querySelector('input');
-                label.classList.toggle('selected', checkbox.checked);
-            });
-        }
-
-        function handleTextInput() {
-            const text = document.getElementById('scheduleInput').value.trim();
-            if (text) {
-                try {
-                    const subjects = parseScheduleText(text);
-                    if (subjects.length > 0) {
-                        parsedSubjects = subjects;
-                        showSubjectControls();
-                        showSuccess(`Found ${subjects.length} subjects!`);
-                    }
-                } catch (error) {
-                    console.error('Parsing error:', error);
-                }
-            }
-        }
-
-        async function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            showUploadStatus('Uploading image...', 'info');
-
-            try {
-                const { data: { text } } = await Tesseract.recognize(file, 'eng');
-                document.getElementById('ocrResult').value = text;
-                showUploadStatus('✅ Image uploaded and processed successfully!', 'success');
-            } catch (error) {
-                console.error('OCR Error:', error);
-                alert('Error processing image: ' + error.message);
-                showUploadStatus('❌ Error processing image', 'error');
-            }
-        }
-        
-        function showUploadStatus(message, type) {
-            const statusDiv = document.getElementById('uploadStatus');
-            const statusText = document.getElementById('uploadStatusText');
-            
-            statusText.textContent = message;
-            statusDiv.className = type;
-            statusDiv.style.display = 'block';
-            
-            if (type === 'success' || type === 'error') {
+            if (fileInput.files && fileInput.files[0]) {
+                uploadStatus.style.display = 'block';
+                uploadStatus.style.backgroundColor = '#dbeafe';
+                uploadStatus.style.color = '#1e40af';
+                uploadStatusText.textContent = '📤 Image uploaded successfully! Click "Process Image" to extract text.';
+                
                 setTimeout(() => {
-                    statusDiv.style.display = 'none';
+                    uploadStatus.style.display = 'none';
                 }, 3000);
             }
         }
 
+        // Process OCR with proper error handling
         async function processOCR() {
-            const imageFile = document.getElementById('imageInput').files[0];
-            
-            if (!imageFile) {
-                showError('Please select an image file first.');
+            const imageInput = document.getElementById('imageInput');
+            const processBtn = document.getElementById('processBtn');
+            const processText = document.getElementById('processText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const ocrResult = document.getElementById('ocrResult');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadStatusText = document.getElementById('uploadStatusText');
+
+            if (!imageInput.files || !imageInput.files[0]) {
+                showUploadStatus('❌ Please select an image first', 'error');
                 return;
             }
 
-            setProcessingState(true);
-            clearMessages();
-
             try {
-                const result = await Tesseract.recognize(imageFile, 'eng', {
+                processBtn.disabled = true;
+                processText.style.display = 'none';
+                loadingSpinner.style.display = 'inline-block';
+                showUploadStatus('🔄 Processing image...', 'info');
+
+                const worker = await Tesseract.createWorker({
                     logger: m => {
                         if (m.status === 'recognizing text') {
                             const progress = Math.round(m.progress * 100);
-                            document.getElementById('processText').textContent = `Processing... ${progress}%`;
+                            showUploadStatus(`🔍 OCR Progress: ${progress}%`, 'info');
                         }
                     }
                 });
 
-                if (result && result.data && result.data.text) {
-                    document.getElementById('ocrResult').value = result.data.text;
-                    showSuccess('OCR processing completed! Review the text and click "Parse Schedule".');
+                await worker.loadLanguage('eng+ara');
+                await worker.initialize('eng+ara');
+                
+                const { data: { text } } = await worker.recognize(imageInput.files[0]);
+                await worker.terminate();
+
+                if (text && text.trim()) {
+                    ocrResult.value = text;
+                    showUploadStatus('✅ Image processed successfully!', 'success');
                 } else {
-                    showError('OCR failed to extract text from image.');
+                    showUploadStatus('⚠️ No text detected in image', 'warning');
                 }
+
             } catch (error) {
                 console.error('OCR Error:', error);
-                showError(`OCR processing failed: ${error.message}`);
+                showUploadStatus('❌ Error processing image: ' + error.message, 'error');
             } finally {
-                setProcessingState(false);
+                processBtn.disabled = false;
+                processText.style.display = 'inline';
+                loadingSpinner.style.display = 'none';
             }
         }
 
-        function parseSubjects() {
-            const textInput = document.getElementById('textInput').value.trim();
-            const ocrInput = document.getElementById('ocrResult').value.trim();
-            const input = textInput || ocrInput;
-
-            if (!input) {
-                alert('Please enter some text or upload an image first.');
-                return;
-            }
+        function showUploadStatus(message, type) {
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadStatusText = document.getElementById('uploadStatusText');
             
-            conflictMessages = [];
-
-            try {
-                subjects = parseScheduleText(input);
-                displaySubjects();
-                generateTimetable();
-            } catch (error) {
-                console.error('Parsing error:', error);
-                alert('Error parsing schedule: ' + error.message);
-            }
+            uploadStatus.style.display = 'block';
+            uploadStatusText.textContent = message;
+            
+            const colors = {
+                'info': { bg: '#dbeafe', color: '#1e40af' },
+                'success': { bg: '#dcfce7', color: '#166534' },
+                'warning': { bg: '#fef3c7', color: '#92400e' },
+                'error': { bg: '#fee2e2', color: '#dc2626' }
+            };
+            
+            uploadStatus.style.backgroundColor = colors[type].bg;
+            uploadStatus.style.color = colors[type].color;
+            
+            setTimeout(() => {
+                uploadStatus.style.display = 'none';
+            }, 3000);
         }
 
+        // Parse schedule with enhanced patterns
         function parseSchedule() {
-            const textInput = document.getElementById('scheduleInput').value.trim();
-            const ocrInput = document.getElementById('ocrResult').value.trim();
-            const scheduleText = textInput || ocrInput;
+            const textInput = document.getElementById('scheduleInput');
+            const ocrResult = document.getElementById('ocrResult');
+            const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+            
+            let text = '';
+            if (activeTab === 'text') {
+                text = textInput.value.trim();
+            } else {
+                text = ocrResult.value.trim();
+            }
 
-            if (!scheduleText) {
-                showError('Please provide schedule text either by typing or using OCR.');
+            if (!text) {
+                alert('Please enter or process some text first.');
                 return;
             }
 
-            try {
-                const subjects = parseScheduleText(scheduleText);
-                
-                if (subjects.length > 0) {
-                    parsedSubjects = subjects;
-                    showSubjectControls();
-                    showSuccess(`Successfully parsed ${subjects.length} subjects!`);
-                } else {
-                    showError('No subjects found. Please check your input format.');
-                }
-            } catch (error) {
-                console.error('Parsing error:', error);
-                showError(`Parsing error: ${error.message}`);
-            }
-        }
-
-        function parseScheduleText(text) {
-            if (!text || typeof text !== 'string') {
-                throw new Error('Invalid text input');
-            }
-
-            const subjects = [];
+            subjects = [];
             const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-            
             let currentDay = '';
-            const dayPatterns = [
-                /^(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/i,
-                /^(sun|mon|tue|wed|thu|fri|sat)$/i,
-                /^(الأحد|الاثنين|الثلاثاء|الأربعاء|الخميس|الجمعة|السبت)$/i
+
+            // Enhanced parsing patterns
+            const patterns = [
+                // Pattern 1: Standard format with Arabic text
+                /^([A-Z]{3,}\d{3}),?\s*([^:]+):\s*(Lecture|Tutorial|Lab|Class)\s*At\s*\[([^\]]+)\].*?From\s*(\d{1,2}):?(\d{2})?\s*To\s*(\d{1,2}):?(\d{2})?/i,
+                
+                // Pattern 2: OCR format with noise
+                /^([A-Z]{3,}\d{3}),?\s*([^:]+):\s*(Lecture|Tutorial|Lab|Class)?\s*At\s*\[([^\]]*)\].*?From\s*(\d{1,2}):?(\d{2})?\s*To\s*(\d{1,2}):?(\d{2})?/i,
+                
+                // Pattern 3: Simple format
+                /^([A-Z]{3,}\d{3}),?\s*([^:]+):\s*(Lecture|Tutorial|Lab|Class)?\s*.*?(\d{1,2}):?(\d{2})?\s*-\s*(\d{1,2}):?(\d{2})?/i,
+                
+                // Pattern 4: Format without room
+                /^([A-Z]{3,}\d{3}),?\s*([^:]+):\s*(Lecture|Tutorial|Lab|Class)?\s*From\s*(\d{1,2}):?(\d{2})?\s*To\s*(\d{1,2}):?(\d{2})?/i
             ];
 
-            // Enhanced patterns to match your format
-            const subjectPatterns = [
-                // Pattern 1: MTHS003, Calculus 2 : Lecture At [20503]20503-45-الجيزة الرئيسي From 8:00 To 9:50 - 1 -
-                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\][^F]*from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
-                
-                // Pattern 2: IPHYS002, Electricity and Magnetism : Lecture At [20511]2051 1-45—'__,_..4)" 334>J| From 8:00 To 10:50 - 2 -
-                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\][^F]*from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
-                
-                // Pattern 3: Simple format - PHYS002, Electricity and Magnetism : Lecture At [20511] From 8:00 To 10:50
-                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+at\s+\[([^\]]+)\]\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i,
-                
-                // Pattern 4: Without room - PHYS002, Electricity and Magnetism : Lecture From 8:00 To 10:50
-                /^([A-Z]{2,4}\d{3}),?\s*([^:]+)?\s*:\s*(lecture|tutorial|lab)\s+from\s+(\d{1,2}:\d{2})\s+to\s+(\d{1,2}:\d{2})/i
-            ];
-
-            for (const line of lines) {
+            for (let line of lines) {
                 // Check if line is a day
-                const isDayLine = dayPatterns.some(pattern => pattern.test(line));
-                
-                if (isDayLine) {
-                    currentDay = line.toLowerCase();
-                    // Normalize day names
-                    const dayMap = {
-                        'sun': 'sunday', 'mon': 'monday', 'tue': 'tuesday', 'wed': 'wednesday',
-                        'thu': 'thursday', 'fri': 'friday', 'sat': 'saturday',
-                        'الأحد': 'sunday', 'الاثنين': 'monday', 'الثلاثاء': 'tuesday',
-                        'الأربعاء': 'wednesday', 'الخميس': 'thursday', 'الجمعة': 'friday', 'السبت': 'saturday'
-                    };
-                    currentDay = dayMap[currentDay] || currentDay;
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                if (dayNames.includes(line)) {
+                    currentDay = line;
                     continue;
                 }
 
-                // Try to match subject patterns
-                for (let i = 0; i < subjectPatterns.length; i++) {
-                    const pattern = subjectPatterns[i];
+                if (!currentDay) continue;
+
+                // Try each pattern
+                let matched = false;
+                for (let pattern of patterns) {
                     const match = line.match(pattern);
-                    
-                    if (match && currentDay) {
-                        let subjectCode, subjectName, type, room, startTime, endTime;
+                    if (match) {
+                        let code, name, type, room, startHour, startMin, endHour, endMin;
                         
-                        if (i === 3) { // Pattern without room
-                            [, subjectCode, subjectName, type, startTime, endTime] = match;
-                            room = 'TBA';
-                        } else {
-                            [, subjectCode, subjectName, type, room, startTime, endTime] = match;
+                        if (pattern === patterns[0] || pattern === patterns[1]) {
+                            [, code, name, type, room, startHour, startMin, endHour, endMin] = match;
+                        } else if (pattern === patterns[2]) {
+                            [, code, name, type, startHour, startMin, endHour, endMin] = match;
+                            room = '';
+                        } else if (pattern === patterns[3]) {
+                            [, code, name, type, startHour, startMin, endHour, endMin] = match;
+                            room = '';
                         }
 
-                        // Clean up the data
-                        subjectName = (subjectName || '').trim().replace(/,$/, '');
-                        type = type.toLowerCase();
-                        room = room ? room.split(/[^A-Z0-9]/)[0] || room : 'TBA'; // Extract room number
+                        // Clean room number
+                        if (room) {
+                            room = room.replace(/[^\d]/g, '').substring(0, 5);
+                        }
 
-                        // Convert 12-hour to 24-hour if needed
-                        startTime = normalizeTime(startTime);
-                        endTime = normalizeTime(endTime);
+                        // Format time
+                        const startTime = `${startHour.padStart(2, '0')}:${(startMin || '00').padStart(2, '0')}`;
+                        const endTime = `${endHour.padStart(2, '0')}:${(endMin || '00').padStart(2, '0')}`;
 
                         subjects.push({
-                            code: subjectCode.toUpperCase(),
-                            name: subjectName || subjectCode,
-                            type: type,
+                            code: code.trim(),
+                            name: name.trim(),
+                            type: type || 'Class',
                             day: currentDay,
                             startTime: startTime,
                             endTime: endTime,
                             room: room,
                             color: getRandomColor()
                         });
+
+                        matched = true;
                         break;
                     }
                 }
             }
 
-            return subjects;
+            if (subjects.length === 0) {
+                alert('No subjects found. Please check your input format.');
+                return;
+            }
+
+            // Group subjects by code and assign same colors
+            const subjectGroups = {};
+            subjects.forEach(subject => {
+                if (!subjectGroups[subject.code]) {
+                    subjectGroups[subject.code] = getRandomColor();
+                }
+                subject.color = subjectGroups[subject.code];
+            });
+
+            updateSubjectsList();
+            autoDetectDaysOff();
+            generateTimetable();
         }
 
-        function normalizeTime(timeStr) {
-            let [hours, minutes] = timeStr.split(':').map(Number);
+        // Auto-detect days off
+        function autoDetectDaysOff() {
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const busyDays = new Set(subjects.map(s => s.day));
             
-            // Handle PM times (assuming times after 12:00 are PM unless specified)
-            if (hours < 8 && hours !== 12) {
-                hours += 12;
-            }
-            
-            // Round minutes to nearest 15-minute interval for better display
-            minutes = Math.round(minutes / 15) * 15;
-            
-            if (minutes >= 60) {
-                hours += 1;
-                minutes = 0;
-            }
-            
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            dayNames.forEach(day => {
+                const checkbox = document.getElementById(`off${day}`);
+                if (checkbox) {
+                    checkbox.checked = !busyDays.has(day);
+                    updateDayCheckbox();
+                }
+            });
         }
 
-        function showSubjectControls() {
-            const container = document.getElementById('subjectControls');
-            const listContainer = document.getElementById('subjectList');
-            
-            container.style.display = 'block';
-            listContainer.innerHTML = '';
+        // Update subjects list with color controls
+        function updateSubjectsList() {
+            const container = document.getElementById('subjectsList');
+            if (!subjects.length) {
+                container.innerHTML = '';
+                return;
+            }
 
             // Group subjects by code
             const subjectGroups = {};
-            parsedSubjects.forEach(subject => {
+            subjects.forEach(subject => {
                 if (!subjectGroups[subject.code]) {
                     subjectGroups[subject.code] = [];
                 }
                 subjectGroups[subject.code].push(subject);
             });
 
-            Object.entries(subjectGroups).forEach(([code, subjects]) => {
-                const subjectDiv = document.createElement('div');
-                subjectDiv.className = 'subject-item';
+            let html = '';
+            Object.keys(subjectGroups).forEach(code => {
+                const group = subjectGroups[code];
+                const firstSubject = group[0];
                 
-                const types = [...new Set(subjects.map(s => s.type))].join(' + ');
-                const days = [...new Set(subjects.map(s => s.day))].join(', ');
-                
-                subjectDiv.innerHTML = `
-                    <div class="subject-header">
-                        <div>
-                            <div class="subject-name">${code}</div>
-                            <div class="subject-details">${subjects[0].name}</div>
+                html += `
+                    <div class="subject-item">
+                        <div class="subject-header">
+                            <div>
+                                <div class="subject-name">${code}</div>
+                                <div class="subject-details">${firstSubject.name}</div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="color-btn" style="background-color: ${firstSubject.color}" 
+                                        onclick="changeSubjectColor('${code}')" 
+                                        title="Change color for all ${code} sessions"></button>
+                            </div>
                         </div>
-                        <input type="color" class="color-picker" value="${subjects[0].color}" 
-                               onchange="updateSubjectColor('${code}', this.value)">
-                    </div>
-                    
-                    <table class="subject-table">
-                        <thead>
-                            <tr>
-                                <th>Day</th>
-                                <th>Type</th>
-                                <th>Start</th>
-                                <th>End</th>
-                                <th>Room</th>
-                                <th>🎨</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${subjects.map((s, index) => `
+                        <table class="subject-table">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <select onchange="updateSubjectDay('${code}', ${index}, this.value)">
-                                            <option value="sunday" ${s.day === 'sunday' ? 'selected' : ''}>Sunday</option>
-                                            <option value="monday" ${s.day === 'monday' ? 'selected' : ''}>Monday</option>
-                                            <option value="tuesday" ${s.day === 'tuesday' ? 'selected' : ''}>Tuesday</option>
-                                            <option value="wednesday" ${s.day === 'wednesday' ? 'selected' : ''}>Wednesday</option>
-                                            <option value="thursday" ${s.day === 'thursday' ? 'selected' : ''}>Thursday</option>
-                                            <option value="friday" ${s.day === 'friday' ? 'selected' : ''}>Friday</option>
-                                            <option value="saturday" ${s.day === 'saturday' ? 'selected' : ''}>Saturday</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select onchange="updateSubjectType('${code}', ${index}, this.value)">
-                                            <option value="lecture" ${s.type === 'lecture' ? 'selected' : ''}>Lecture</option>
-                                            <option value="tutorial" ${s.type === 'tutorial' ? 'selected' : ''}>Tutorial</option>
-                                            <option value="lab" ${s.type === 'lab' ? 'selected' : ''}>Lab</option>
-                                        </select>
-                                    </td>
-                                    <td>${s.startTime}</td>
-                                    <td>${s.endTime}</td>
-                                    <td>[${s.room}]</td>
-                                    <td><button class="color-btn" style="background-color: ${s.color}; width: 30px; height: 30px; border: none; border-radius: 50%; cursor: pointer; position: relative;" onclick="changeSubjectColor('${s.code}')" title="Change color">🎨</button></td>
+                                    <th>Day</th>
+                                    <th>Type</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Room</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
                 `;
                 
-                listContainer.appendChild(subjectDiv);
+                group.forEach((subject, index) => {
+                    html += `
+                        <tr>
+                            <td>
+                                <select onchange="updateSubjectDay('${code}', ${index}, this.value)">
+                                    <option value="Sunday" ${subject.day === 'Sunday' ? 'selected' : ''}>Sunday</option>
+                                    <option value="Monday" ${subject.day === 'Monday' ? 'selected' : ''}>Monday</option>
+                                    <option value="Tuesday" ${subject.day === 'Tuesday' ? 'selected' : ''}>Tuesday</option>
+                                    <option value="Wednesday" ${subject.day === 'Wednesday' ? 'selected' : ''}>Wednesday</option>
+                                    <option value="Thursday" ${subject.day === 'Thursday' ? 'selected' : ''}>Thursday</option>
+                                    <option value="Friday" ${subject.day === 'Friday' ? 'selected' : ''}>Friday</option>
+                                    <option value="Saturday" ${subject.day === 'Saturday' ? 'selected' : ''}>Saturday</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select onchange="updateSubjectType('${code}', ${index}, this.value)">
+                                    <option value="Lecture" ${subject.type === 'Lecture' ? 'selected' : ''}>Lecture</option>
+                                    <option value="Tutorial" ${subject.type === 'Tutorial' ? 'selected' : ''}>Tutorial</option>
+                                    <option value="Lab" ${subject.type === 'Lab' ? 'selected' : ''}>Lab</option>
+                                </select>
+                            </td>
+                            <td>${subject.startTime}</td>
+                            <td>${subject.endTime}</td>
+                            <td>${subject.room}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
             });
 
-            document.getElementById('generateBtn').style.display = 'inline-block';
-            updateStats();
+            container.innerHTML = html;
         }
 
-        function updateSubjectColor(code, color) {
-            parsedSubjects.forEach(subject => {
-                if (subject.code === code) {
-                    subject.color = color;
+        // Change subject color
+        function changeSubjectColor(code) {
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = subjects.find(s => s.code === code).color;
+            input.onchange = function() {
+                subjects.forEach(subject => {
+                    if (subject.code === code) {
+                        subject.color = this.value;
+                    }
+                });
+                updateSubjectsList();
+                generateTimetable();
+            };
+            input.click();
+        }
+
+        // Update subject day
+        function updateSubjectDay(code, index, newDay) {
+            const subjectGroup = subjects.filter(s => s.code === code);
+            if (subjectGroup[index]) {
+                subjectGroup[index].day = newDay;
+                checkDayOffConflict();
+                generateTimetable();
+            }
+        }
+
+        // Update subject type
+        function updateSubjectType(code, index, newType) {
+            const subjectGroup = subjects.filter(s => s.code === code);
+            if (subjectGroup[index]) {
+                subjectGroup[index].type = newType;
+                generateTimetable();
+            }
+        }
+
+        // Check for day off conflicts
+        function checkDayOffConflict() {
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const busyDays = new Set(subjects.map(s => s.day));
+            
+            dayNames.forEach(day => {
+                const checkbox = document.getElementById(`off${day}`);
+                if (checkbox && checkbox.checked && busyDays.has(day)) {
+                    const conflictingSubjects = subjects.filter(s => s.day === day).map(s => s.code);
+                    alert(`⚠️ ${day} is marked as 'Day Off' but has subjects: ${conflictingSubjects.join(', ')}`);
                 }
             });
         }
 
-        function updateSubjectDay(code, index, day) {
-            const subjectIndex = parsedSubjects.findIndex((s, i) => s.code === code && parsedSubjects.filter(sub => sub.code === code).indexOf(s) === index);
-            if (subjectIndex !== -1) {
-                parsedSubjects[subjectIndex].day = day;
-            }
-        }
-
-        function updateSubjectType(code, index, type) {
-            const subjectIndex = parsedSubjects.findIndex((s, i) => s.code === code && parsedSubjects.filter(sub => sub.code === code).indexOf(s) === index);
-            if (subjectIndex !== -1) {
-                parsedSubjects[subjectIndex].type = type;
-            }
-        }
-
+        // Generate timetable with proper Ramadan mode
         function generateTimetable() {
-            const startHour = parseInt(document.getElementById('startTime').value) || 8;
-            const endHour = parseInt(document.getElementById('endTime').value) || 18;
-            const startDay = parseInt(document.getElementById('startDay').value);
-            const offDayColor = document.getElementById('offDayColor').value;
-
-            if (endHour <= startHour) {
-                alert('End time must be after start time!');
+            const container = document.getElementById('timetableDisplay');
+            if (!subjects.length) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">No subjects to display. Please parse your schedule first.</p>';
                 return;
             }
 
-            const allDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const days = [];
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const startDay = parseInt(document.getElementById('startDay').value);
             
-            // Reorder days based on start day
-            for (let i = 0; i < 7; i++) {
-                days.push(allDays[(startDay + i) % 7]);
-            }
+            // Generate time slots
+            const timeSlots = generateTimeSlots(startTime, endTime);
+            
+            // Generate day order based on start day
+            const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const orderedDays = [...allDays.slice(startDay), ...allDays.slice(0, startDay)];
 
-            // Auto-detect days off
-            const daysWithSessions = new Set();
-            parsedSubjects.forEach(subject => {
-                daysWithSessions.add(subject.day);
-            });
-            
-            const daysOff = days.filter(day => !daysWithSessions.has(day));
-            updateDaysOffDisplay(daysOff, daysWithSessions);
+            let html = `
+                <table class="timetable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            ${orderedDays.map(day => `<th>${day}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
 
-            const timeSlots = isRamadanMode ? generateRamadanTimeSlots(startHour, endHour) : generateNormalTimeSlots(startHour, endHour);
-            
-            let html = '<table class="timetable"><thead><tr><th>Time</th>';
-            
-            days.forEach(day => {
-                const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-                html += `<th>${dayName}</th>`;
-            });
-            
-            html += '</tr></thead><tbody>';
-
-            // Track which cells are already occupied by rowspan
-            const occupiedCells = new Set();
-
-            timeSlots.forEach((timeSlot, timeIndex) => {
-                html += `<tr><td class="time-slot">${formatTime(timeSlot)}</td>`;
+            timeSlots.forEach(slot => {
+                html += '<tr>';
+                html += `<td class="time-slot">${slot}</td>`;
                 
-                days.forEach((day, dayIndex) => {
-                    const cellKey = `${timeIndex}-${dayIndex}`;
-                    
-                    if (occupiedCells.has(cellKey)) {
-                        // This cell is occupied by a rowspan from above
-                        return;
-                    }
-                    
-                    if (getDaysOff().includes(day)) {
-                        if (timeIndex === 0) {
-                            // First row for off day - create spanning cell
-                            
-                            // Check for conflicts
-                            const daySubjects = parsedSubjects.filter(s => s.day === day);
-                            if (daySubjects.length > 0) {
-                                const subjectNames = daySubjects.map(s => s.name).join(', ');
-                                conflictMessages.push(`${day} is marked as "Day Off" but has subjects: ${subjectNames}`);
-                            }
-                            
-                            html += `<td class="off-day" style="background: ${offDayColor} !important;" rowspan="${timeSlots.length}">Off</td>`;
-                            // Mark all cells in this column as occupied
-                            for (let i = 0; i < timeSlots.length; i++) {
-                                occupiedCells.add(`${i}-${dayIndex}`);
-                            }
-                        }
+                orderedDays.forEach(day => {
+                    const checkbox = document.getElementById(`off${day}`);
+                    if (checkbox && checkbox.checked) {
+                        const offColor = document.getElementById('offDayColor').value;
+                        html += `<td class="off-day" style="background-color: ${offColor} !important;">Off</td>`;
                     } else {
-                        const subject = findSubjectForTimeSlot(day, timeSlot);
+                        const subject = findSubjectForSlot(day, slot);
                         if (subject) {
-                            const duration = calculateDuration(subject.startTime, subject.endTime, isRamadanMode);
-                            const backgroundColor = showColors ? subject.color : '#6b7280';
-                            
-                            html += `<td class="subject-cell" style="background-color: ${backgroundColor}" rowspan="${duration}">
-                                <div>${subject.code}</div>
-                                <div class="subject-type">${subject.type.charAt(0).toUpperCase() + subject.type.slice(1)}</div>
-                                <div class="subject-room">[${subject.room}]</div>
+                            html += `<td class="subject-cell" style="background-color: ${subject.color}">
+                                ${subject.code}
+                                <span class="subject-type">${subject.type}</span>
+                                ${subject.room ? `<span class="subject-room">${subject.room}</span>` : ''}
                             </td>`;
-                            
-                            // Mark occupied cells
-                            for (let i = 0; i < duration; i++) {
-                                occupiedCells.add(`${timeIndex + i}-${dayIndex}`);
-                            }
                         } else {
                             html += '<td></td>';
                         }
@@ -1536,163 +1373,165 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
             });
 
             html += '</tbody></table>';
-            
-            document.getElementById('timetableContainer').innerHTML = html;
-            document.getElementById('exportBtn').style.display = 'inline-block';
-            document.getElementById('statsContainer').style.display = 'block';
-            
-            // Show conflict messages if any
-            if (conflictMessages.length > 0) {
-                const message = conflictMessages.join('\n');
-                alert('⚠️ Schedule Conflicts Detected:\n\n' + message);
-            }
+            container.innerHTML = html;
         }
 
-        function updateDaysOffDisplay(daysOff, daysWithSessions) {
-            const grid = document.getElementById('daysOffGrid');
-            const status = document.getElementById('daysOffStatus');
-            
-            if (daysOff.length === 0) {
-                status.textContent = 'No days off detected - all days have sessions';
-                grid.innerHTML = '';
-            } else {
-                status.textContent = `Auto-detected days off: ${daysOff.join(', ')}`;
-                grid.innerHTML = daysOff.map(day => 
-                    `<label><input type="checkbox" id="off${day}" checked onchange="handleDayOffChange('${day}', this.checked)"> ${day}</label>`
-                ).join('');
-            }
-        }
-        
-        function handleDayOffChange(day, isChecked) {
-            // Check if day has sessions
-            const hasSession = parsedSubjects.some(subject => subject.day === day);
-            
-            if (isChecked && hasSession) {
-                const sessionsInDay = parsedSubjects.filter(subject => subject.day === day).map(s => s.code);
-                
-                alert(`⚠️ ${day} has subjects: ${sessionsInDay.join(', ')}. Please remove these subjects first or choose a different day.`);
-                document.getElementById(`off${day}`).checked = false;
-                return;
-            }
-            
-            generateTimetable();
-        }
-
-        function isDayOff(day) {
-            return document.getElementById(day.toLowerCase() + 'Off').checked;
-        }
-
-        function generateTimeSlots(startHour, endHour, isRamadan, is24Hour) {
+        // Generate time slots based on mode
+        function generateTimeSlots(startTime, endTime) {
             const slots = [];
-            const increment = isRamadan ? 0.75 : 1; // 45 minutes or 60 minutes
-
-            for (let hour = startHour; hour < endHour; hour += increment) {
-                const wholeHour = Math.floor(hour);
-                const minutes = (hour - wholeHour) * 60;
-                const timeStr = `${wholeHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                slots.push(timeStr);
+            const start = timeToMinutes(startTime);
+            const end = timeToMinutes(endTime);
+            const slotDuration = isRamadanMode ? 45 : 60; // Only change slot duration
+            
+            for (let time = start; time < end; time += slotDuration) {
+                const slotStart = minutesToTime(time);
+                const slotEnd = minutesToTime(time + slotDuration);
+                slots.push(`${slotStart}-${slotEnd}`);
             }
-
+            
             return slots;
         }
 
-        function generateNormalTimeSlots(startHour, endHour) {
-            const slots = [];
-            for (let hour = startHour; hour < endHour; hour++) {
-                slots.push(`${hour.toString().padStart(2, '0')}:00`);
-            }
-            return slots;
-        }
-
-        function generateRamadanTimeSlots(startHour, endHour) {
-            const slots = [];
-            // In Ramadan mode, generate 45-minute slots
-            for (let hour = startHour; hour < endHour; hour++) {
-                slots.push(`${hour.toString().padStart(2, '0')}:00`);
-                if (hour < endHour - 1) {
-                    slots.push(`${hour.toString().padStart(2, '0')}:45`);
-                }
-            }
-            return slots;
-        }
-
-        function formatTime(timeStr) {
-            if (!is24HourFormat) {
-                const [hours, minutes] = timeStr.split(':').map(Number);
-                const period = hours >= 12 ? 'PM' : 'AM';
-                const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-            }
-            return timeStr;
-        }
-
-        function findSubjectForTimeSlot(day, timeSlot) {
-            return parsedSubjects.find(subject => {
+        // Find subject for time slot
+        function findSubjectForSlot(day, timeSlot) {
+            const [slotStart] = timeSlot.split('-');
+            const slotStartMinutes = timeToMinutes(slotStart);
+            
+            return subjects.find(subject => {
                 if (subject.day !== day) return false;
                 
-                const slotTime = timeToMinutes(timeSlot);
-                const startTime = timeToMinutes(subject.startTime);
-                const endTime = timeToMinutes(subject.endTime);
+                const subjectStart = timeToMinutes(subject.startTime);
+                const subjectEnd = timeToMinutes(subject.endTime);
                 
-                return slotTime >= startTime && slotTime < endTime;
+                return slotStartMinutes >= subjectStart && slotStartMinutes < subjectEnd;
             });
         }
 
-        function calculateDuration(startTime, endTime, ramadanMode) {
-            const start = timeToMinutes(startTime);
-            const end = timeToMinutes(endTime);
-            const durationMinutes = end - start;
-            
-            if (ramadanMode) {
-                // In Ramadan mode, each slot is 45 minutes
-                return Math.ceil(durationMinutes / 45);
-            } else {
-                // Normal mode, each slot is 60 minutes
-                return Math.ceil(durationMinutes / 60);
-            }
-        }
-
+        // Utility functions
         function timeToMinutes(timeStr) {
             const [hours, minutes] = timeStr.split(':').map(Number);
             return hours * 60 + minutes;
         }
 
-        function updateStats() {
-            const uniqueSubjects = [...new Set(parsedSubjects.map(s => s.code))].length;
-            const totalHours = parsedSubjects.reduce((total, subject) => {
-                const duration = timeToMinutes(subject.endTime) - timeToMinutes(subject.startTime);
-                return total + (duration / 60);
-            }, 0);
-            const activeDays = [...new Set(parsedSubjects.map(s => s.day))].length;
-
-            document.getElementById('totalSubjects').textContent = uniqueSubjects;
-            document.getElementById('totalHours').textContent = Math.round(totalHours);
-            document.getElementById('activeDays').textContent = activeDays;
+        function minutesToTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            
+            if (is24HourFormat) {
+                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+            } else {
+                const period = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+            }
         }
 
-        async function exportToPNG() {
-            const timetableContainer = document.getElementById('timetableContainer');
-            if (!timetableContainer || !timetableContainer.querySelector('.timetable')) {
-                alert('Please generate a timetable first!');
+        function getRandomColor() {
+            const colors = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
+                '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Toggle functions
+        function toggleHourFormat() {
+            const toggle = document.getElementById('hourFormatToggle');
+            is24HourFormat = !toggle.classList.contains('active');
+            toggle.classList.toggle('active');
+            generateTimetable();
+        }
+
+        function toggleRamadanMode() {
+            const toggle = document.getElementById('ramadanModeToggle');
+            isRamadanMode = !isRamadanMode;
+            toggle.classList.toggle('active');
+            generateTimetable();
+        }
+
+        function toggleCompactView() {
+            const toggle = document.getElementById('compactViewToggle');
+            compactView = !compactView;
+            toggle.classList.toggle('active');
+            generateTimetable();
+        }
+
+        function toggleShowColors() {
+            const toggle = document.getElementById('showColorsToggle');
+            showColors = !showColors;
+            toggle.classList.toggle('active');
+            generateTimetable();
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const themeToggle = document.getElementById('themeToggle');
+            themeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            saveSettings();
+        }
+
+        // Day checkbox updates
+        function updateDayCheckbox() {
+            document.querySelectorAll('.day-checkbox').forEach(label => {
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    label.classList.add('selected');
+                } else {
+                    label.classList.remove('selected');
+                }
+            });
+            checkDayOffConflict();
+            generateTimetable();
+        }
+
+        // Clear all data
+        function clearAll() {
+            subjects = [];
+            document.getElementById('scheduleInput').value = '';
+            document.getElementById('ocrResult').value = '';
+            document.getElementById('timetableDisplay').innerHTML = '';
+            updateSubjectsList();
+            
+            // Reset file input
+            const imageInput = document.getElementById('imageInput');
+            imageInput.value = '';
+            
+            // Hide upload status
+            document.getElementById('uploadStatus').style.display = 'none';
+        }
+
+        // Export functions
+        function exportToExcel() {
+            if (!subjects.length) {
+                alert('No data to export. Please parse your schedule first.');
                 return;
             }
-            
-            // Import html2canvas library
-            if (typeof html2canvas === 'undefined') {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                script.onload = function() {
-                    exportToPNG();
-                };
-                document.head.appendChild(script);
+
+            const ws = XLSX.utils.json_to_sheet(subjects);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Timetable");
+            XLSX.writeFile(wb, "timetable.xlsx");
+        }
+
+        function exportToPNG() {
+            const timetable = document.querySelector('.timetable');
+            if (!timetable) {
+                alert('No timetable to export. Please generate a timetable first.');
                 return;
             }
-            
-            const table = timetableContainer.querySelector('.timetable');
-            html2canvas(table, {
+
+            html2canvas(timetable, {
                 scale: 2,
-                backgroundColor: '#ffffff',
-                useCORS: true
+                backgroundColor: '#ffffff'
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'timetable.png';
@@ -1700,133 +1539,62 @@ MCNS202, Fluid Mechanics : Lecture At [20109] From 2:00 To 3:50"></textarea>
                 link.click();
             }).catch(error => {
                 console.error('Export error:', error);
-                alert('Error exporting image: ' + error.message);
+                alert('Failed to export PNG. Please try again.');
             });
         }
 
-        function exportToExcel() {
-            const table = document.querySelector('.timetable');
-            if (!table) {
-                showError('No timetable to export. Please generate a timetable first.');
-                return;
-            }
-
-            try {
-                const wb = XLSX.utils.table_to_book(table, {sheet: "Timetable"});
-                XLSX.writeFile(wb, `timetable_${new Date().toISOString().split('T')[0]}.xlsx`);
-                showSuccess('Timetable exported successfully!');
-            } catch (error) {
-                showError('Failed to export timetable: ' + error.message);
-            }
+        // Settings management
+        function saveSettings() {
+            const settings = {
+                subjects: subjects,
+                isRamadanMode: isRamadanMode,
+                is24HourFormat: is24HourFormat,
+                showColors: showColors,
+                compactView: compactView,
+                darkMode: document.body.classList.contains('dark-mode')
+            };
+            localStorage.setItem('timetableSettings', JSON.stringify(settings));
         }
 
-        function clearAll() {
-            document.getElementById('scheduleInput').value = '';
-            document.getElementById('ocrResult').value = '';
-            document.getElementById('imageInput').value = '';
-            parsedSubjects = [];
-            
-            // Uncheck all day checkboxes
-            document.querySelectorAll('.day-checkbox input').forEach(cb => {
-                cb.checked = false;
-            });
-            updateDayCheckbox();
-            
-            document.getElementById('subjectControls').style.display = 'none';
-            document.getElementById('generateBtn').style.display = 'none';
-            document.getElementById('exportBtn').style.display = 'none';
-            document.getElementById('statsContainer').style.display = 'none';
-            document.getElementById('timetableContainer').innerHTML = '';
-            
-            clearMessages();
-            setProcessingState(false);
-        }
-
-        function setProcessingState(processing) {
-            const processBtn = document.getElementById('processBtn');
-            const processText = document.getElementById('processText');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            
-            processBtn.disabled = processing;
-            
-            if (processing) {
-                processText.style.display = 'none';
-                loadingSpinner.style.display = 'inline-block';
-            } else {
-                processText.style.display = 'inline';
-                processText.textContent = '🔍 Process Image';
-                loadingSpinner.style.display = 'none';
-            }
-        }
-
-        function showError(message) {
-            const container = document.getElementById('errorContainer');
-            container.innerHTML = `<div class="error-message">❌ ${message}</div>`;
-            setTimeout(() => container.innerHTML = '', 5000);
-        }
-
-        function showSuccess(message) {
-            const container = document.getElementById('successContainer');
-            container.innerHTML = `<div class="success-message">✅ ${message}</div>`;
-            setTimeout(() => container.innerHTML = '', 5000);
-        }
-
-        function clearMessages() {
-            document.getElementById('errorContainer').innerHTML = '';
-            document.getElementById('successContainer').innerHTML = '';
-        }
-
-        function checkDaysOffConflicts() {
-            const conflicts = [];
-            const daysWithSessions = new Set();
-            
-            subjects.forEach(subject => {
-                daysWithSessions.add(subject.day.toLowerCase());
-            });
-            
-            // Check each day off checkbox
-            const dayCheckboxes = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            dayCheckboxes.forEach(day => {
-                const checkbox = document.getElementById(`off${day}`);
-                if (checkbox && checkbox.checked && daysWithSessions.has(day.toLowerCase())) {
-                    conflicts.push(day);
+        function loadSettings() {
+            const saved = localStorage.getItem('timetableSettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                subjects = settings.subjects || [];
+                isRamadanMode = settings.isRamadanMode || false;
+                is24HourFormat = settings.is24HourFormat !== false;
+                showColors = settings.showColors !== false;
+                compactView = settings.compactView || false;
+                
+                if (settings.darkMode) {
+                    document.body.classList.add('dark-mode');
+                    document.getElementById('themeToggle').textContent = '☀️';
                 }
-            });
-            
-            if (conflicts.length > 0) {
-                showError(`⚠️ The following days are marked as 'Day Off' but have subjects: ${conflicts.join(', ')}`);
-                return false;
-            }
-            
-            return true;
-        }
-
-        function getDaysOff() {
-            const daysOff = [];
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            
-            dayNames.forEach(day => {
-                const checkbox = document.getElementById(`off${day.charAt(0).toUpperCase() + day.slice(1)}`);
-                if (checkbox && checkbox.checked) {
-                    daysOff.push(day);
+                
+                // Update toggles
+                document.getElementById('ramadanModeToggle').classList.toggle('active', isRamadanMode);
+                document.getElementById('hourFormatToggle').classList.toggle('active', is24HourFormat);
+                document.getElementById('showColorsToggle').classList.toggle('active', showColors);
+                document.getElementById('compactViewToggle').classList.toggle('active', compactView);
+                
+                updateSubjectsList();
+                if (subjects.length > 0) {
+                    generateTimetable();
                 }
-            });
-            
-            return daysOff;
+            }
         }
 
-        function getRandomColor() {
-            const colors = [
-                '#4f46e5', '#7c3aed', '#dc2626', '#ea580c', '#d97706', '#ca8a04',
-                '#65a30d', '#16a34a', '#059669', '#0d9488', '#0891b2', '#0284c7',
-                '#2563eb', '#4338ca', '#7c2d12', '#a21caf', '#be185d', '#e11d48'
-            ];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
-
-        // Initialize
+        // Add export buttons to the UI
         document.addEventListener('DOMContentLoaded', function() {
-            updateSubjectsList();
+            const controlsSection = document.querySelector('.controls');
+            const exportSection = document.createElement('div');
+            exportSection.innerHTML = `
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+                    <button class="btn" onclick="exportToExcel()">📊 Export Excel</button>
+                    <button class="btn btn-secondary" onclick="exportToPNG()">🖼️ Export PNG</button>
+                </div>
+            `;
+            controlsSection.appendChild(exportSection);
         });
     </script>
 </body>
